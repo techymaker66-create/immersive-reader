@@ -21,9 +21,9 @@ input[type=file]{display:block;margin-bottom:10px;}
 .add-btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 12px;border-radius:8px;color:var(--accent);cursor:pointer;transition:all .18s ease;}
 .add-btn:hover{border-color:var(--accent);}
 .tiles{display:flex;flex-wrap:wrap;gap:18px;}
-.tile{width:160px; height:240px; border-radius:10px; overflow:hidden; position:relative; background:#18181a; box-shadow:0 6px 18px rgba(0,0,0,0.6); cursor:pointer; transition:transform .25s,box-shadow .25s;}
+.tile{width:160px; height:240px; border-radius:10px; overflow:hidden; position:relative; background:#18181a; box-shadow:0 6px 18px rgba(0,0,0,0.6); cursor:pointer; transition:transform .25s,box-shadow .25s, filter .25s;}
 .tile img{width:100%;height:100%;object-fit:cover;display:block;}
-.tile:hover{transform:translateY(-6px) scale(1.02); box-shadow:0 12px 30px rgba(0,0,0,0.7);}
+.tile:hover{transform:translateY(-6px) scale(1.05); box-shadow:0 16px 40px rgba(0,0,0,0.8); filter:brightness(1.1);}
 .tile .meta{position:absolute;left:0;right:0;bottom:0;padding:10px;background:linear-gradient(180deg,transparent, rgba(0,0,0,0.6));display:flex;justify-content:space-between;align-items:center;}
 .tile .meta .title{font-size:13px;}
 .tile .meta .resume{font-size:12px;color:var(--muted);}
@@ -65,7 +65,7 @@ input[type=file]{display:block;margin-bottom:10px;}
     <div id="homepageView">
       <div style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
         <h2 style="margin:0">Your Library</h2>
-        <div style="color:var(--muted);font-size:13px">Tap a cover to open • Hover to resume</div>
+        <div style="color:var(--muted);font-size:13px">Tap a cover to open • Hover to resume • Double-click to delete</div>
       </div>
       <div class="tiles" id="tiles"></div>
     </div>
@@ -95,64 +95,36 @@ input[type=file]{display:block;margin-bottom:10px;}
 
 <script>
 document.addEventListener('DOMContentLoaded', ()=>{
-
-  // Cursor glow
+  // Smooth cursor orb
   const cursorGlow=document.getElementById('cursorGlow');
-  document.addEventListener('mousemove', e=>{
-    cursorGlow.style.left=e.clientX+'px';
-    cursorGlow.style.top=e.clientY+'px';
-  });
+  let mouse={x:0,y:0}, pos={x:0,y:0};
+  document.addEventListener('mousemove', e=>{ mouse.x=e.clientX; mouse.y=e.clientY; });
+  function animateCursor(){ pos.x+=(mouse.x-pos.x)*0.2; pos.y+=(mouse.y-pos.y)*0.2; cursorGlow.style.left=pos.x+'px'; cursorGlow.style.top=pos.y+'px'; requestAnimationFrame(animateCursor);}
+  animateCursor();
 
   // IndexedDB
-  const DB_NAME='comickDB', STORE_NAME='seriesStore';
-  let db;
-  async function openDB(){
-    if(db) return db;
-    return new Promise((resolve,reject)=>{
-      const req=indexedDB.open(DB_NAME,1);
-      req.onupgradeneeded=e=>{ db=e.target.result; db.createObjectStore(STORE_NAME,{keyPath:'id'});}
-      req.onsuccess=e=>resolve(db=e.target.result);
-      req.onerror=e=>reject(e);
-    });
-  }
-  async function saveSeries(series){
-    if(!db) await openDB();
-    return new Promise(res=>{
-      const tx=db.transaction(STORE_NAME,'readwrite');
-      const store=tx.objectStore(STORE_NAME);
-      const req=store.put(series);
-      req.onsuccess=()=>res();
-    });
-  }
-  async function getSeries(){
-    if(!db) await openDB();
-    return new Promise(res=>{
-      const tx=db.transaction(STORE_NAME,'readonly');
-      const store=tx.objectStore(STORE_NAME);
-      const all=store.getAll();
-      all.onsuccess=()=>res(all.result);
-    });
-  }
+  const DB_NAME='comickDB', STORE_NAME='seriesStore'; let db;
+  async function openDB(){ if(db) return db; return new Promise((resolve,reject)=>{ const req=indexedDB.open(DB_NAME,1); req.onupgradeneeded=e=>{ db=e.target.result; db.createObjectStore(STORE_NAME,{keyPath:'id'});} req.onsuccess=e=>resolve(db=e.target.result); req.onerror=e=>reject(e); });}
+  async function saveSeries(series){ if(!db) await openDB(); return new Promise(res=>{ const tx=db.transaction(STORE_NAME,'readwrite'); const store=tx.objectStore(STORE_NAME); const req=store.put(series); req.onsuccess=()=>res(); });}
+  async function deleteSeries(id){ if(!db) await openDB(); return new Promise(res=>{ const tx=db.transaction(STORE_NAME,'readwrite'); const store=tx.objectStore(STORE_NAME); store.delete(id); tx.oncomplete=()=>res(); });}
+  async function getSeries(){ if(!db) await openDB(); return new Promise(res=>{ const tx=db.transaction(STORE_NAME,'readonly'); const store=tx.objectStore(STORE_NAME); const all=store.getAll(); all.onsuccess=()=>res(all.result); });}
 
-  const tilesDiv=document.getElementById('tiles');
-  let lastCover=null;
-  document.getElementById('coverInput').addEventListener('change', e=>{
-    lastCover=e.target.files[0];
-  });
+  const tilesDiv=document.getElementById('tiles'); let lastCover=null;
+  document.getElementById('coverInput').addEventListener('change', e=>{ lastCover=e.target.files[0]; });
 
   async function renderLibrary(){
-    const seriesList=await getSeries();
-    tilesDiv.innerHTML='';
+    const seriesList=await getSeries(); tilesDiv.innerHTML='';
     seriesList.forEach(s=>{
       const tile=document.createElement('div'); tile.className='tile';
-      const img=document.createElement('img');
-      img.src=s.coverBlob?URL.createObjectURL(s.coverBlob):'https://via.placeholder.com/160x240?text=No+Cover';
+      const img=document.createElement('img'); img.src=s.coverBlob?URL.createObjectURL(s.coverBlob):'https://via.placeholder.com/160x240?text=No+Cover';
       tile.appendChild(img);
       const meta=document.createElement('div'); meta.className='meta';
       const title=document.createElement('div'); title.className='title'; title.textContent=s.title;
-      meta.appendChild(title);
-      tile.appendChild(meta);
-      tile.addEventListener('click',()=>openReader(s));
+      meta.appendChild(title); tile.appendChild(meta);
+
+      tile.addEventListener('click', ()=>openReader(s));
+      tile.addEventListener('dblclick', async ()=>{ if(confirm('Delete "'+s.title+'" ?')){ await deleteSeries(s.id); await renderLibrary(); } });
+
       tilesDiv.appendChild(tile);
     });
   }
@@ -166,28 +138,19 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const url=URL.createObjectURL(series.epubBlob);
     currentBook=ePub(url);
     rendition=currentBook.renderTo('viewer',{width:'100%',height:'100%'});
+    // Ensure first chapter is displayed properly with readable text
+    rendition.themes.default({ 'body': { 'color':'var(--accent)', 'background':'rgba(0,0,0,0.85)', 'font-family':'Playfair Display, serif' } });
     await rendition.display();
   }
 
   document.getElementById('epubInput').addEventListener('change', async e=>{
     const file=e.target.files[0]; if(!file) return;
     const series={id:Date.now().toString(),title:file.name.replace('.epub',''),epubBlob:file,coverBlob:lastCover};
-    await saveSeries(series);
-    lastCover=null;
-    await renderLibrary();
+    await saveSeries(series); lastCover=null; await renderLibrary();
   });
 
-  document.getElementById('gotoHome').addEventListener('click', ()=>{
-    document.getElementById('readerWrap').style.display='none';
-    document.getElementById('homepageView').style.display='block';
-  });
-  document.getElementById('downloadEpub').addEventListener('click', ()=>{
-    if(!currentSeries) return;
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(currentSeries.epubBlob);
-    a.download=currentSeries.title+'.epub';
-    a.click();
-  });
+  document.getElementById('gotoHome').addEventListener('click', ()=>{ document.getElementById('readerWrap').style.display='none'; document.getElementById('homepageView').style.display='block'; });
+  document.getElementById('downloadEpub').addEventListener('click', ()=>{ if(!currentSeries) return; const a=document.createElement('a'); a.href=URL.createObjectURL(currentSeries.epubBlob); a.download=currentSeries.title+'.epub'; a.click(); });
 
   renderLibrary();
 });
