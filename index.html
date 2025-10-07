@@ -1,9 +1,9 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Lord of Mysteries - Comick Reader</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Comick-style Immersive Reader</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://unpkg.com/epubjs/dist/epub.min.js"></script>
@@ -12,25 +12,37 @@
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;font-family:'Playfair Display',serif;background:var(--bg);color:var(--accent);}
 #app{display:flex;min-height:100vh}
-#sidebar{width:300px;padding:20px;background:linear-gradient(180deg,#0b0b0d,#0f0f12);border-right:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;}
-#main{flex:1;padding:20px;display:flex;flex-direction:column;align-items:center}
-h1{margin:0 0 12px 0;font-size:22px;letter-spacing:1px}
-.controls{display:flex;flex-direction:column;gap:12px;margin-bottom:20px}
-.add-btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:10px 16px;border-radius:8px;color:var(--accent);cursor:pointer;transition:all .18s ease;text-align:left}
+#sidebar{width:320px;padding:28px;background:linear-gradient(180deg,#0b0b0d,#0f0f12);border-right:1px solid rgba(255,255,255,0.03);display:flex;flex-direction:column;}
+#main{flex:1;padding:28px;display:flex;flex-direction:column;align-items:center}
+h1{margin:0 0 12px 0;font-size:20px;letter-spacing:1px}
+.controls{margin:12px 0 22px 0;display:flex;flex-direction:column;gap:10px}
+.add-btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 12px;border-radius:8px;color:var(--accent);cursor:pointer;transition:all .18s ease;text-align:left}
 .add-btn:hover{border-color:var(--accent)}
-.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:18px;width:100%}
-.tile{width:140px;height:220px;border-radius:10px;overflow:hidden;position:relative;background:#18181a;box-shadow:0 6px 18px rgba(0,0,0,0.6);cursor:pointer;transition:transform .25s,box-shadow .25s}
-.tile img{width:100%;height:100%;object-fit:cover}
-.tile:hover{transform:translateY(-4px) scale(1.02);box-shadow:0 10px 28px rgba(0,0,0,0.7)}
-.tile .meta{position:absolute;left:0;right:0;bottom:0;padding:6px;background:linear-gradient(180deg,transparent,rgba(0,0,0,0.6));display:flex;justify-content:space-between;align-items:center}
-.tile .meta .title{font-size:13px;line-height:1.2}
-.tile .meta .resume{font-size:11px;color:var(--muted)}
-.tile .delete-btn{position:absolute;top:6px;right:6px;background:rgba(255,0,0,0.7);border:none;color:#fff;border-radius:50%;width:20px;height:20px;font-size:14px;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center}
-#readerWrap{display:none;flex-direction:column;align-items:center;position:relative;width:100%;height:100vh}#readerHeader{width:100%;display:flex;justify-content:space-between;align-items:center;padding:22px 40px;position:fixed;top:0;left:0;z-index:50;background:linear-gradient(180deg,rgba(10,10,10,0.9),transparent);backdrop-filter:blur(2px)}#readerHeader h2{margin:0;font-size:18px}#viewerContainer{width:820px;max-width:92%;margin-top:98px;margin-bottom:80px;position:relative}#viewer{background:rgba(0,0,0,0.35);padding:36px 48px;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,0.7);max-height:74vh;overflow:auto}
-#viewer p{opacity:0;margin:0 0 1.15em 0;line-height:1.8;font-size:18px}#viewer p.visible{opacity:1;transition:opacity .8s ease}#viewer .dropcap{float:left;font-size:64px;line-height:56px;padding-right:12px;padding-top:8px;color:var(--accent)}
-#progressBar{position:fixed;right:20px;top:20px;width:10px;height:60vh;background:rgba(255,255,255,0.03);border-radius:20px;overflow:hidden}#progressFill{width:100%;height:0;background:linear-gradient(180deg,var(--accent),#d4d4b8)}
-.nav{position:fixed;left:0;right:0;bottom:24px;display:flex;justify-content:space-between;padding:0 40px;pointer-events:none}.nav button{pointer-events:auto;background:linear-gradient(145deg,#2a2a2a,#171717);border-radius:28px;padding:14px 22px;border:none;color:var(--accent);font-size:16px;box-shadow:0 8px 22px rgba(0,0,0,0.6);cursor:pointer;transition:transform .18s,box-shadow .18s}.nav button:hover{transform:scale(1.06);box-shadow:0 14px 34px rgba(0,0,0,0.75)}.nav button:active{transform:scale(.96)}
-#fog{position:fixed;inset:0;background:radial-gradient(circle at 50% 40%,rgba(255,255,255,0.02),rgba(255,255,255,0.01)10%,rgba(0,0,0,0.85)40%);pointer-events:none;opacity:0;transition:opacity .6s;z-index:90}#cursorGlow{position:fixed;width:22px;height:22px;border-radius:50%;pointer-events:none;mix-blend-mode:screen;box-shadow:0 0 32px 10px rgba(245,245,220,0.22);transform:translate(-50%,-50%);z-index:200;transition:all .18s ease}@media(max-width:900px){#sidebar{display:none}#viewer{padding:22px}}
+.tiles{display:flex;flex-wrap:wrap;gap:18px}
+.tile{width:160px;height:240px;border-radius:10px;overflow:hidden;position:relative;background:#18181a;box-shadow:0 6px 18px rgba(0,0,0,0.6);cursor:pointer;transition:transform .25s,box-shadow .25s}
+.tile img{width:100%;height:100%;object-fit:cover;display:block}
+.tile:hover{transform:translateY(-6px) scale(1.02);box-shadow:0 12px 30px rgba(0,0,0,0.7)}
+.tile .meta{position:absolute;left:0;right:0;bottom:0;padding:10px;background:linear-gradient(180deg,transparent, rgba(0,0,0,0.6));display:flex;justify-content:space-between;align-items:center}
+.tile .meta .title{font-size:13px}
+.tile .meta .resume{font-size:12px;color:var(--muted)}
+.tile .delete-btn{position:absolute;top:6px;right:6px;background:rgba(255,0,0,0.7);border:none;color:#fff;border-radius:50%;width:20px;height:20px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10}
+#readerWrap{display:none;flex-direction:column;align-items:center;position:relative;width:100%;height:100vh}
+#readerHeader{width:100%;display:flex;justify-content:space-between;align-items:center;padding:22px 40px;position:fixed;top:0;left:0;z-index:50;background:linear-gradient(180deg, rgba(10,10,10,0.9), transparent);backdrop-filter: blur(2px)}
+#readerHeader h2{margin:0;font-size:18px}
+#viewerContainer{width:820px;max-width:92%;margin-top:98px;margin-bottom:80px;position:relative}
+#viewer{background:rgba(0,0,0,0.35);padding:36px 48px;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,0.7);max-height:74vh;overflow:auto}
+#viewer p{opacity:0;margin:0 0 1.15em 0;line-height:1.8;font-size:18px}
+#viewer p.visible{opacity:1;transition:opacity .8s ease}
+#viewer .dropcap{float:left;font-size:64px;line-height:56px;padding-right:12px;padding-top:8px;color:var(--accent)}
+#progressBar{position:fixed;right:20px;top:20px;width:10px;height:60vh;background:rgba(255,255,255,0.03);border-radius:20px;overflow:hidden}
+#progressFill{width:100%;height:0;background:linear-gradient(180deg,var(--accent), #d4d4b8)}
+.nav{position:fixed;left:0;right:0;bottom:24px;display:flex;justify-content:space-between;padding:0 40px;pointer-events:none}
+.nav button{pointer-events:auto;background:linear-gradient(145deg,#2a2a2a,#171717);border-radius:28px;padding:14px 22px;border:none;color:var(--accent);font-size:16px;box-shadow:0 8px 22px rgba(0,0,0,0.6);cursor:pointer;transition:transform .18s,box-shadow .18s}
+.nav button:hover{transform:scale(1.06);box-shadow:0 14px 34px rgba(0,0,0,0.75)}
+.nav button:active{transform:scale(.96)}
+#fog{position:fixed;inset:0;background:radial-gradient(circle at 50% 40%, rgba(255,255,255,0.02), rgba(255,255,255,0.01) 10%, rgba(0,0,0,0.85) 40%);pointer-events:none;opacity:0;transition:opacity .6s;z-index:90}
+#cursorGlow{position:fixed;width:22px;height:22px;border-radius:50%;pointer-events:none;mix-blend-mode:screen;box-shadow:0 0 32px 10px rgba(245,245,220,0.22);transform:translate(-50%,-50%);z-index:200;transition:all .18s ease}
+@media (max-width:900px){#sidebar{display:none}#viewer{padding:22px}}
 </style>
 </head>
 <body>
@@ -43,8 +55,6 @@ h1{margin:0 0 12px 0;font-size:22px;letter-spacing:1px}
 <button id="addSeriesBtn" class="add-btn">Add Series</button>
 </div>
 <div id="statusMsg" style="color:var(--muted);font-size:13px;margin-top:10px">Ready</div>
-<div style="height:24px"></div>
-<div style="color:var(--muted);font-size:13px">Series stored in browser via IndexedDB.</div>
 </aside>
 <main id="main">
 <div id="homepageView">
@@ -77,16 +87,21 @@ h1{margin:0 0 12px 0;font-size:22px;letter-spacing:1px}
 <div id="cursorGlow"></div>
 <script>
 // --- IndexedDB ---
-const DB_NAME='comickDB';
-const STORE_NAME='seriesStore';
-let db=null,currentSeries=null,book=null,rendition=null;
+const DB_NAME='comickDB', STORE_NAME='seriesStore';
+let db=null, currentSeries=null, book=null, rendition=null;
 const statusMsg=document.getElementById('statusMsg');
-async function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,1);req.onupgradeneeded=e=>{db=e.target.result;db.createObjectStore(STORE_NAME,{keyPath:'id'})};req.onsuccess=e=>{db=e.target.result;resolve(db)};req.onerror=e=>reject(e);});}
+async function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,1);
+req.onupgradeneeded=e=>{db=e.target.result;db.createObjectStore(STORE_NAME,{keyPath:'id'})};
+req.onsuccess=e=>{db=e.target.result;resolve(db)};
+req.onerror=e=>reject(e);});}
 async function getAllSeries(){if(!db) await openDB();return new Promise(resolve=>{const tx=db.transaction(STORE_NAME,'readonly');const store=tx.objectStore(STORE_NAME);const req=store.getAll();req.onsuccess=()=>resolve(req.result);});}
 async function saveSeries(series){if(!db) await openDB();return new Promise(resolve=>{const tx=db.transaction(STORE_NAME,'readwrite');const store=tx.objectStore(STORE_NAME);const req=store.put(series);req.onsuccess=()=>resolve();});}
-async function deleteSeries(id){if(!db) await openDB();const tx=db.transaction(STORE_NAME,'readwrite');tx.objectStore(STORE_NAME).delete(id);renderLibrary();}
+async function deleteSeries(id){if(!db) await openDB();
+const tx=db.transaction(STORE_NAME,'readwrite');
+tx.objectStore(STORE_NAME).delete(id);
+renderLibrary();}
 
-// --- Library Rendering ---
+// --- Render Library ---
 async function renderLibrary(){
 const tiles=document.getElementById('tiles');
 tiles.innerHTML='';
@@ -101,7 +116,7 @@ tiles.appendChild(div);
 });
 }
 
-// --- Add series ---
+// --- Add Series ---
 document.getElementById('addSeriesBtn').onclick=async()=>{
 const epubFile=document.getElementById('epubInput').files[0];
 const coverFile=document.getElementById('coverInput').files[0];
@@ -124,37 +139,4 @@ currentSeries=s;
 document.getElementById('seriesTitle').textContent=s.title;
 const blob=new Blob([s.epub],{type:'application/epub+zip'});
 book=ePub(blob);
-rendition=book.renderTo('viewer',{width:'100%',height:'100%'});
-await book.ready;
-await book.locations.generate(1000);
-const startCfi=s.lastCfi||book.locations.start;
-rendition.display(startCfi);
-rendition.on('relocated',loc=>{
-const percent=loc.start.percentage*100;
-document.getElementById('progressFill').style.height=percent+'%';
-currentSeries.lastCfi=loc.start.cfi;
-saveSeries(currentSeries);
-});
-}
-
-// --- Navigation ---
-document.getElementById('nextBtn').onclick=()=>{if(rendition)rendition.next();};
-document.getElementById('prevBtn').onclick=()=>{if(rendition)rendition.prev();};
-document.getElementById('gotoHome').onclick=()=>{
-document.getElementById('readerWrap').style.display='none';
-document.getElementById('homepageView').style.display='block';
-renderLibrary();
-};
-
-// --- Keyboard ---
-document.addEventListener('keydown',e=>{
-if(!rendition)return;
-if(e.code==='ArrowRight'||e.code==='Space'||e.code==='ArrowDown')rendition.next();
-if(e.code==='ArrowLeft'||e.code==='ShiftRight')rendition.prev();
-});
-
-// --- Init ---
-(async()=>{await openDB();renderLibrary();})();
-</script>
-</body>
-</html>
+rendition=book.renderTo('viewer',{width:'100
