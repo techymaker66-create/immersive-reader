@@ -1,80 +1,48 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Comick Visual Reader</title>
-
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Comick Immersive Reader</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-
+<script src="https://unpkg.com/epubjs/dist/epub.min.js"></script>
 <style>
-:root{
-  --bg:#0d0d0f; --muted:#9b9b9b; --accent:#f5f5dc;
-}
+:root{--bg:#0d0d0f;--panel:#121216;--muted:#9b9b9b;--accent:#f5f5dc}
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;font-family:'Playfair Display',serif;background:var(--bg);color:var(--accent);-webkit-font-smoothing:antialiased}
+html,body{height:100%;margin:0;font-family:'Playfair Display',serif;background:var(--bg);color:var(--accent);}
 #app{display:flex;min-height:100vh}
-#sidebar{width:320px;padding:28px;background:linear-gradient(180deg,#0b0b0d,#0f0f12);border-right:1px solid rgba(255,255,255,0.03);display:flex;flex-direction:column}
-#main{flex:1;padding:28px;display:flex;flex-direction:column;align-items:center}
+#sidebar{width:320px;padding:28px;background:linear-gradient(180deg,#0b0b0d,#0f0f12);border-right:1px solid rgba(255,255,255,0.03)}
+#main{flex:1;padding:28px;display:flex;flex-direction:column;align-items:center;position:relative}
 h1{margin:0 0 12px 0;font-size:20px;letter-spacing:1px}
-
-/* controls */
-.controls{margin:12px 0 18px 0;display:flex;flex-direction:column;gap:10px}
-.add-btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 12px;border-radius:8px;color:var(--accent);cursor:pointer;transition:all .18s ease;text-align:left}
-.add-btn:hover{border-color:var(--accent)}
-#statusMsg{color:var(--muted);font-size:13px;margin-top:10px}
-
-/* tiles */
+.controls{margin:12px 0 22px 0}
+input[type=file]{display:block;margin-bottom:10px}
+.add-btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 12px;border-radius:8px;color:var(--accent);cursor:pointer;transition:all .18s ease}
+.add-btn:hover{border-color:var(--accent);}
 .tiles{display:flex;flex-wrap:wrap;gap:18px}
 .tile{width:160px;height:240px;border-radius:10px;overflow:hidden;position:relative;background:#18181a;box-shadow:0 6px 18px rgba(0,0,0,0.6);cursor:pointer;transition:transform .25s,box-shadow .25s}
 .tile img{width:100%;height:100%;object-fit:cover;display:block}
 .tile:hover{transform:translateY(-6px) scale(1.02);box-shadow:0 12px 30px rgba(0,0,0,0.7)}
-.tile .meta{position:absolute;left:0;right:0;bottom:0;padding:10px;background:linear-gradient(180deg,transparent, rgba(0,0,0,0.6));display:flex;justify-content:space-between;align-items:center}
+.tile .meta{position:absolute;left:0;right:0;bottom:0;padding:10px;background:linear-gradient(180deg,transparent,rgba(0,0,0,0.6));display:flex;justify-content:space-between;align-items:center}
 .tile .meta .title{font-size:13px}
 .tile .meta .resume{font-size:12px;color:var(--muted)}
-
-/* reader (comick visual) */
-#readerWrap{display:none;position:relative;width:100%;height:100vh;overflow:hidden}
-#readerHeader{width:100%;display:flex;justify-content:space-between;align-items:center;padding:18px 40px;position:fixed;top:0;left:0;z-index:60;background:linear-gradient(180deg, rgba(10,10,10,0.9), transparent)}
+#readerWrap{display:none;flex-direction:column;align-items:center;position:relative;width:100%;height:100vh}
+#readerHeader{width:100%;display:flex;justify-content:space-between;align-items:center;padding:22px 40px;position:fixed;top:0;left:0;z-index:50;background:linear-gradient(180deg, rgba(10,10,10,0.9), transparent);backdrop-filter: blur(2px)}
 #readerHeader h2{margin:0;font-size:18px}
-#viewerContainer{width:100%;max-width:1100px;margin-top:72px;margin-bottom:80px;position:relative}
-#viewer{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:28px;border-radius:12px;box-shadow:0 18px 60px rgba(0,0,0,0.6);max-height:76vh;overflow:auto;scroll-behavior:smooth}
-
-/* Each chapter card (Comick look) */
-.chapter{
-  margin:28px 0;
-  padding:36px;
-  border-radius:14px;
-  background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));
-  box-shadow:0 10px 30px rgba(0,0,0,0.6);
-  transform-origin:center;
-  transition:transform .45s cubic-bezier(.2,.9,.2,1), opacity .6s;
-  opacity:0;
-}
-.chapter.visible{
-  opacity:1;
-  transform:translateY(0) scale(1);
-}
-.chapter .chapter-title{font-size:20px;margin:0 0 12px 0}
-.chapter p{font-size:18px;line-height:1.85;margin:0 0 1.1em 0;color:var(--accent);opacity:0;transition:opacity .9s ease}
-.chapter .dropcap{float:left;font-size:64px;line-height:56px;padding-right:12px;padding-top:6px;color:var(--accent)}
-
-/* progress bar */
-#progressBar{position:fixed;right:20px;top:20px;width:10px;height:60vh;background:rgba(255,255,255,0.03);border-radius:20px;overflow:hidden;z-index:70}
-#progressFill{width:100%;height:0;background:linear-gradient(180deg,var(--accent), #d4d4b8)}
-
-/* nav & fog & cursor */
-.nav{position:fixed;left:0;right:0;bottom:24px;display:flex;justify-content:space-between;padding:0 40px;pointer-events:none;z-index:70}
+#viewerContainer{width:820px;max-width:92%;margin-top:98px;margin-bottom:80px;position:relative}
+#viewer{background:rgba(0,0,0,0.35);padding:36px 48px;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,0.7);max-height:74vh;overflow:auto}
+#viewer p{opacity:0;margin:0 0 1.15em 0;line-height:1.8;font-size:18px;transition:opacity .8s ease}
+#viewer p.visible{opacity:1}
+#viewer .dropcap{float:left;font-size:64px;line-height:56px;padding-right:12px;padding-top:8px;color:var(--accent)}
+#progressBar{position:fixed;right:20px;top:20px;width:10px;height:60vh;background:rgba(255,255,255,0.03);border-radius:20px;overflow:hidden}
+#progressFill{width:100%;height:0;background:linear-gradient(180deg,var(--accent),#d4d4b8)}
+.nav{position:fixed;left:0;right:0;bottom:24px;display:flex;justify-content:space-between;padding:0 40px;pointer-events:none}
 .nav button{pointer-events:auto;background:linear-gradient(145deg,#2a2a2a,#171717);border-radius:28px;padding:14px 22px;border:none;color:var(--accent);font-size:16px;box-shadow:0 8px 22px rgba(0,0,0,0.6);cursor:pointer;transition:transform .18s,box-shadow .18s}
-#fog{position:fixed;inset:0;background:radial-gradient(circle at 50% 40%, rgba(255,255,255,0.02), rgba(255,255,255,0.01) 10%, rgba(0,0,0,0.85) 40%);pointer-events:none;opacity:0;transition:opacity .45s;z-index:80}
-#cursorGlow{position:fixed;width:20px;height:20px;border-radius:50%;pointer-events:none;mix-blend-mode:screen;box-shadow:0 0 32px 8px rgba(245,245,220,0.22);transform:translate(-50%,-50%);z-index:200;transition:all .12s ease}
-
-/* small screens */
-@media (max-width:900px){
-  #sidebar{display:none}
-  #viewer{padding:18px}
-}
+.nav button:hover{transform:scale(1.06);box-shadow:0 14px 34px rgba(0,0,0,0.75)}
+.nav button:active{transform:scale(.96)}
+#fog{position:fixed;inset:0;background:radial-gradient(circle at 50% 40%, rgba(255,255,255,0.02), rgba(255,255,255,0.01) 10%, rgba(0,0,0,0.85) 40%);pointer-events:none;opacity:0;transition:opacity .6s;z-index:90}
+#cursorGlow{position:fixed;width:22px;height:22px;border-radius:50%;pointer-events:none;mix-blend-mode:screen;box-shadow:0 0 32px 10px rgba(245,245,220,0.22);transform:translate(-50%,-50%);z-index:200;transition:all .18s ease}
+@media (max-width:900px){#sidebar{display:none}#viewer{padding:22px}}
 </style>
 </head>
 <body>
@@ -82,41 +50,31 @@ h1{margin:0 0 12px 0;font-size:20px;letter-spacing:1px}
   <aside id="sidebar">
     <h1>Comick Library</h1>
     <div class="controls">
-      <label class="add-btn">Select EPUB
+      <label class="add-btn">Add Series (EPUB)
         <input id="epubInput" type="file" accept=".epub">
       </label>
-      <label class="add-btn">Select Cover (optional)
+      <label class="add-btn">Upload Cover
         <input id="coverInput" type="file" accept="image/*">
       </label>
-      <button id="addSeriesBtn" class="add-btn">Add Series</button>
+      <button id="clearSeries" class="add-btn">Delete Selected Series</button>
     </div>
-    <div id="statusMsg">Ready</div>
-
-    <div style="height:18px"></div>
+    <div id="statusMsg" style="color:var(--muted);font-size:13px;margin-top:10px">Ready</div>
+    <div style="height:24px"></div>
+    <div style="color:var(--muted);font-size:13px;">Series stored in browser. Back up EPUBs if needed.</div>
     <div class="tiles" id="tiles"></div>
   </aside>
-
   <main id="main">
-    <div id="homepageView" style="width:100%;max-width:1200px">
-      <div style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-        <h2 style="margin:0">Your Library</h2>
-        <div style="color:var(--muted);font-size:13px">Click to open • Right-click to delete • Resumes automatically</div>
-      </div>
-    </div>
-
     <div id="readerWrap">
       <div id="readerHeader">
         <h2 id="seriesTitle">Series</h2>
         <div>
           <button id="gotoHome" class="add-btn">Library</button>
-          <button id="downloadEpub" class="add-btn">Download EPUB</button>
         </div>
       </div>
-
-      <div id="viewerContainer"><div id="viewer" tabindex="0"></div></div>
-
+      <div id="viewerContainer">
+        <div id="viewer" tabindex="0"></div>
+      </div>
       <div id="progressBar"><div id="progressFill"></div></div>
-
       <div class="nav">
         <button id="prevBtn">⟵ Prev</button>
         <button id="nextBtn">Next ⟶</button>
@@ -124,407 +82,125 @@ h1{margin:0 0 12px 0;font-size:20px;letter-spacing:1px}
     </div>
   </main>
 </div>
-
 <div id="fog"></div>
 <div id="cursorGlow"></div>
 
 <script>
-/* ---------- DB helpers ---------- */
-const DB_NAME = 'comickDB_v3';
-const STORE_NAME = 'seriesStore';
-let db = null;
-function openDB(){
-  return new Promise((resolve,reject)=>{
-    const req = indexedDB.open(DB_NAME,1);
-    req.onupgradeneeded = e => {
-      db = e.target.result;
-      if(!db.objectStoreNames.contains(STORE_NAME)){
-        db.createObjectStore(STORE_NAME,{keyPath:'id'});
-      }
-    };
-    req.onsuccess = e => { db = e.target.result; resolve(db); };
-    req.onerror = e => reject(e);
+// IndexedDB setup
+const DB_NAME='comickDB',STORE_NAME='seriesStore';
+let db;
+function openDB(){return new Promise((res,rej)=>{
+  const r=indexedDB.open(DB_NAME,1);
+  r.onupgradeneeded=e=>{db=e.target.result;db.createObjectStore(STORE_NAME,{keyPath:'id'});};
+  r.onsuccess=e=>{db=e.target.result;res(db);};
+  r.onerror=e=>rej(e);
+})}
+function saveSeries(series){return new Promise(async res=>{
+  if(!db) await openDB();
+  const tx=db.transaction(STORE_NAME,'readwrite');
+  tx.objectStore(STORE_NAME).put(series);
+  tx.oncomplete=()=>res();
+})}
+function getSeries(){return new Promise(async res=>{
+  if(!db) await openDB();
+  const tx=db.transaction(STORE_NAME,'readonly');
+  const store=tx.objectStore(STORE_NAME);
+  const req=store.getAll();
+  req.onsuccess=()=>res(req.result);
+})}
+
+// cursor glow
+const cursorGlow=document.getElementById('cursorGlow');
+document.addEventListener('mousemove',e=>{cursorGlow.style.left=e.clientX+'px';cursorGlow.style.top=e.clientY+'px';});
+
+// UI Elements
+const epubInput=document.getElementById('epubInput');
+const coverInput=document.getElementById('coverInput');
+const tilesDiv=document.getElementById('tiles');
+const viewer=document.getElementById('viewer');
+const readerWrap=document.getElementById('readerWrap');
+const seriesTitle=document.getElementById('seriesTitle');
+const gotoHome=document.getElementById('gotoHome');
+const prevBtn=document.getElementById('prevBtn');
+const nextBtn=document.getElementById('nextBtn');
+const progressFill=document.getElementById('progressFill');
+
+let library=[],currentSeries=null,book=null,spineItems=[],currentIndex=0;
+
+// Load library
+async function loadLibrary(){
+  library=await getSeries();
+  tilesDiv.innerHTML='';
+  library.forEach(s=>{
+    const div=document.createElement('div'); div.className='tile';
+    if(s.cover){div.style.backgroundImage=`url(${s.cover})`;div.style.backgroundSize='cover';}
+    div.onclick=()=>openSeries(s.id);
+    div.oncontextmenu=e=>{e.preventDefault();currentSeries=s;};
+    div.innerHTML=`<div class="meta"><span class="title">${s.title||s.id}</span><span class="resume">Chapter ${s.lastIndex||1}</span></div>`;
+    tilesDiv.appendChild(div);
   });
 }
-function getAllSeries(){ return new Promise(async(res,rej)=>{ if(!db) await openDB(); const tx=db.transaction(STORE_NAME,'readonly'); const store=tx.objectStore(STORE_NAME); const r=store.getAll(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
-function saveSeries(obj){ return new Promise(async(res,rej)=>{ if(!db) await openDB(); const tx=db.transaction(STORE_NAME,'readwrite'); const store=tx.objectStore(STORE_NAME); const r = store.put(obj); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
-function getSeriesById(id){ return new Promise(async(res,rej)=>{ if(!db) await openDB(); const tx=db.transaction(STORE_NAME,'readonly'); const r=tx.objectStore(STORE_NAME).get(id); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
-function deleteSeriesById(id){ return new Promise(async(res,rej)=>{ if(!db) await openDB(); const tx=db.transaction(STORE_NAME,'readwrite'); const r=tx.objectStore(STORE_NAME).delete(id); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
 
-/* ---------- DOM refs ---------- */
-const tilesEl = document.getElementById('tiles');
-const epubInput = document.getElementById('epubInput');
-const coverInput = document.getElementById('coverInput');
-const addSeriesBtn = document.getElementById('addSeriesBtn');
-const statusMsg = document.getElementById('statusMsg');
-const homepageView = document.getElementById('homepageView');
-const readerWrap = document.getElementById('readerWrap');
-const seriesTitle = document.getElementById('seriesTitle');
-const viewer = document.getElementById('viewer');
-const progressFill = document.getElementById('progressFill');
-const prevBtn = document.getElementById('prevBtn');
-const nextBtn = document.getElementById('nextBtn');
-const gotoHome = document.getElementById('gotoHome');
-const downloadEpubBtn = document.getElementById('downloadEpub');
-const fog = document.getElementById('fog');
-const cursorGlow = document.getElementById('cursorGlow');
-
-/* ---------- Utilities ---------- */
-function showStatus(t){ statusMsg.textContent = t; }
-function placeholderCover(){ return 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='800' height='1200'><rect width='100%' height='100%' fill='#111'/><text x='50%' y='50%' font-size='40' fill='#e6e0c8' text-anchor='middle' font-family='Playfair Display'>Untitled</text></svg>`); }
-function dataURLFromFile(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }); }
-function downloadBlob(blob, name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); }
-
-/* ---------- Library UI ---------- */
-async function renderLibrary(){
-  tilesEl.innerHTML='';
-  showStatus('Loading library...');
-  const list = await getAllSeries().catch(e=>{console.error(e); return [];});
-  list.sort((a,b)=> (a.title||'').localeCompare(b.title||''));
-  for(const s of list){
-    const tile = document.createElement('div'); tile.className='tile';
-    const img = document.createElement('img'); img.src = s.cover || placeholderCover();
-    const meta = document.createElement('div'); meta.className='meta';
-    const t = document.createElement('span'); t.className='title'; t.textContent = s.title || 'Untitled';
-    const r = document.createElement('span'); r.className='resume'; r.textContent = s.lastIndex>=0 ? 'Resume' : '';
-    meta.appendChild(t); meta.appendChild(r);
-    tile.appendChild(img); tile.appendChild(meta);
-
-    // right-click to delete
-    tile.addEventListener('contextmenu', (ev)=>{
-      ev.preventDefault();
-      if(confirm(`Delete series "${s.title}"? This will remove stored EPUB and progress.`)){
-        deleteSeriesById(s.id).then(()=>renderLibrary());
-      }
-    });
-
-    // click to open
-    tile.addEventListener('click', ()=> openSeries(s.id));
-
-    tilesEl.appendChild(tile);
-  }
-  showStatus('Ready');
-}
-
-/* ---------- Add series ---------- */
-addSeriesBtn.addEventListener('click', async ()=>{
-  const epubFile = epubInput.files[0];
-  if(!epubFile){ alert('Select an EPUB file.'); return; }
-  showStatus('Caching EPUB...');
-  try{
-    const epubBlob = epubFile.slice(0, epubFile.size, epubFile.type || 'application/epub+zip');
-    const coverData = coverInput.files[0] ? await dataURLFromFile(coverInput.files[0]) : null;
-    const id = 'series_' + Date.now();
-    const title = epubFile.name.replace(/\.epub$/i,'');
-    const obj = { id, title, epub: epubBlob, cover: coverData, lastIndex: -1 };
-    await saveSeries(obj);
-    epubInput.value = ''; coverInput.value = '';
-    await renderLibrary();
-    showStatus('Ready');
-  }catch(e){ console.error(e); alert('Add failed. See console.'); showStatus('Ready'); }
-});
-
-/* ---------- EPUB inline renderer (JSZip + DOMParser) ---------- */
-
-/*
- Approach:
- 1. Read stored EPUB Blob -> ArrayBuffer
- 2. Use JSZip to unzip
- 3. Parse META-INF/container.xml to find OPF rootfile
- 4. Parse OPF to get manifest (id->href) and spine (ordered itemrefs)
- 5. For each spine href: load file (xhtml), inline its CSS/images by converting to blob URLs
- 6. Append each chapter as a .chapter div into #viewer
- 7. Track currentChapterIndex, update progress & save lastIndex
-*/
-
-let currentSeriesId = null;
-let chapterNodes = []; // {id, title, el}
-let currentChapterIndex = -1;
-
+// Open series
 async function openSeries(id){
-  showStatus('Loading book...');
-  try{
-    const s = await getSeriesById(id);
-    if(!s || !s.epub){ alert('Series missing EPUB'); showStatus('Ready'); return; }
-    currentSeriesId = id;
-    seriesTitle.textContent = s.title || 'Series';
-    homepageView.style.display = 'none';
-    readerWrap.style.display = 'block';
-    viewer.innerHTML = '<div style="padding:32px;color:var(--muted)">Processing EPUB… this may take a moment for large files.</div>';
-    chapterNodes = [];
-    currentChapterIndex = -1;
-
-    // 1. load zip
-    const ab = await (s.epub instanceof Blob ? s.epub.arrayBuffer() : s.epub);
-    const zip = await JSZip.loadAsync(ab);
-
-    // 2. find container.xml
-    const containerFile = zip.file("META-INF/container.xml");
-    if(!containerFile){ throw new Error('container.xml not found'); }
-    const containerStr = await containerFile.async('string');
-    const parser = new DOMParser();
-    const containerDoc = parser.parseFromString(containerStr, 'application/xml');
-    const rootfile = containerDoc.querySelector('rootfile');
-    if(!rootfile){ throw new Error('rootfile missing in container.xml'); }
-    const opfPath = rootfile.getAttribute('full-path');
-
-    // 3. read OPF
-    const opfFile = zip.file(opfPath);
-    if(!opfFile) throw new Error('OPF not found: ' + opfPath);
-    const opfStr = await opfFile.async('string');
-    const opfDoc = parser.parseFromString(opfStr, 'application/xml');
-
-    // base path for relative references
-    const basePath = opfPath.split('/').slice(0,-1).join('/');
-    const basePrefix = basePath ? basePath + '/' : '';
-
-    // 4. build manifest map
-    const manifest = {};
-    opfDoc.querySelectorAll('manifest > item').forEach(it=>{
-      manifest[it.getAttribute('id')] = {
-        href: it.getAttribute('href'),
-        mediaType: it.getAttribute('media-type'),
-      };
-    });
-
-    // 5. read spine order
-    const spineIds = [];
-    opfDoc.querySelectorAll('spine > itemref').forEach(ir=>{
-      spineIds.push(ir.getAttribute('idref'));
-    });
-
-    // 6. optional: try to get nav titles (from toc.ncx or manifest nav)
-    let tocMap = {};
-    // try HTML nav (manifest item with properties="nav")
-    for(const id in manifest){
-      const m = manifest[id];
-      if((m.properties && m.properties.includes && m.properties.includes('nav')) || m.mediaType === 'application/x-dtbncx+xml' || m.href.toLowerCase().endsWith('.ncx')){
-        // we'll try reading nav later
-      }
-    }
-
-    // 7. build chapters: iterate spine
-    const chapters = [];
-    for(const idref of spineIds){
-      const item = manifest[idref];
-      if(!item) continue;
-      const href = basePrefix + item.href;
-      const f = zip.file(href) || zip.file(decodeURIComponent(href));
-      if(!f) {
-        // sometimes spine href is with fragment or relative weirdness; try matching by filename
-        const fileMatch = Object.keys(zip.files).find(k => k.endsWith(item.href));
-        if(fileMatch) {
-          chapters.push({href:fileMatch, title: item.href});
-          continue;
-        } else {
-          console.warn('Missing file in zip for', href);
-          continue;
-        }
-      }
-      chapters.push({href, title:item.href});
-    }
-
-    // 8. prepare viewer: clear and append chapters progressively for speed
-    viewer.innerHTML = '';
-    const total = chapters.length;
-    let idx = 0;
-    for(const ch of chapters){
-      // read chapter xhtml
-      const file = zip.file(ch.href) || zip.file(decodeURIComponent(ch.href));
-      if(!file) { idx++; continue; }
-      let htmlStr = await file.async('string');
-
-      // 8a. inline CSS: find <link rel="stylesheet" href="..."> and inline them
-      const doc = parser.parseFromString(htmlStr, 'text/html');
-
-      // process <link> css
-      const links = Array.from(doc.querySelectorAll('link[rel="stylesheet"]'));
-      for(const linkEl of links){
-        const cssHref = linkEl.getAttribute('href');
-        if(!cssHref) continue;
-        const cssPath = (cssHref.startsWith('http') ? cssHref : (basePrefix + cssHref));
-        const cssFile = zip.file(cssPath) || zip.file(decodeURIComponent(cssPath)) || zip.file(cssHref);
-        if(cssFile){
-          try{
-            const cssText = await cssFile.async('string');
-            const styleEl = doc.createElement('style');
-            styleEl.textContent = cssText;
-            linkEl.replaceWith(styleEl);
-          }catch(e){ linkEl.remove(); }
-        } else { linkEl.remove(); }
-      }
-
-      // process images: convert src to blob URLs
-      const imgs = Array.from(doc.querySelectorAll('img'));
-      for(const imgEl of imgs){
-        const src = imgEl.getAttribute('src') || '';
-        if(!src) continue;
-        let path = src;
-        if(!/^[a-z]+:\/\//i.test(src) && !src.startsWith('data:')){
-          path = (src.startsWith('/') ? src.slice(1) : basePrefix + src);
-        }
-        const imgFile = zip.file(path) || zip.file(decodeURIComponent(path)) || zip.file(src);
-        if(imgFile){
-          try{
-            const blob = await imgFile.async('blob');
-            const url = URL.createObjectURL(blob);
-            imgEl.setAttribute('src', url);
-          }catch(e){ console.warn('img inline failed', path, e); }
-        } else {
-          // leave remote or data URLs as-is
-        }
-      }
-
-      // serialize cleaned HTML and wrap as chapter card
-      const serializer = new XMLSerializer();
-      const bodyHtml = doc.body.innerHTML;
-
-      const chapterDiv = document.createElement('div');
-      chapterDiv.className = 'chapter';
-      chapterDiv.dataset.index = idx;
-      // try to get title from document <title> or first h1
-      let chTitle = doc.querySelector('title') ? doc.querySelector('title').textContent : (doc.querySelector('h1') ? doc.querySelector('h1').textContent : (ch.title||('Chapter ' + (idx+1))));
-      chapterDiv.innerHTML = `<div class="chapter-title">${chTitle}</div><div class="chapter-content">${bodyHtml}</div>`;
-      viewer.appendChild(chapterDiv);
-
-      // mark and store
-      chapterNodes.push({id: ch.href, title: chTitle, el: chapterDiv});
-      idx++;
-
-      // small yield so UI updates for big files
-      await new Promise(r=>setTimeout(r,10));
-    } // end chapters loop
-
-    // 9. finalize: reveal first visible chapters, restore lastIndex
-    revealChapters(); // add visible class
-    // restore lastIndex
-    const last = s.lastIndex >= 0 ? s.lastIndex : 0;
-    scrollToChapterIndex(last);
-    showStatus('Ready');
-
-    // update progress on scroll (by chapter)
-    viewer.addEventListener('scroll', throttle(()=> {
-      updateProgressByScroll();
-    }, 120));
-
-    // clicking chapter also selects
-    viewer.querySelectorAll('.chapter').forEach(chEl=>{
-      chEl.addEventListener('click', ()=>{
-        // smooth zoom effect
-        chEl.scrollIntoView({behavior:'smooth', block:'center'});
-      });
-    });
-
-  }catch(err){
-    console.error('openSeries error', err);
-    alert('Failed to open EPUB: ' + (err.message || err));
-    showStatus('Ready');
-  }
+  currentSeries=library.find(s=>s.id===id);
+  seriesTitle.textContent=currentSeries.title||currentSeries.id;
+  readerWrap.style.display='flex';
+  tilesDiv.parentElement.scrollTop=0;
+  const data=await fetch(URL.createObjectURL(currentSeries.file)).then(r=>r.arrayBuffer());
+  book=EPUB(data);
+  spineItems=book.spine.spineItems.map(s=>s.href);
+  currentIndex=currentSeries.lastIndex||0;
+  renderChapter();
 }
 
-/* reveal chapters with staggered animation */
-function revealChapters(){
-  const nodes = viewer.querySelectorAll('.chapter');
-  nodes.forEach((n,i)=>{
-    n.style.transform = 'translateY(14px) scale(.995)';
-    setTimeout(()=> n.classList.add('visible'), 100 + i*50);
+// Render chapter
+async function renderChapter(){
+  if(!book) return;
+  const item=book.spine.spineItems[currentIndex];
+  const content=await item.load(book.load.bind(book));
+  viewer.innerHTML='';
+  const parser=new DOMParser();
+  const doc=parser.parseFromString(content,'application/xml');
+  doc.querySelectorAll('p').forEach(p=>{
+    const para=document.createElement('p');
+    para.textContent=p.textContent; para.classList.add('visible'); viewer.appendChild(para);
   });
+  progressFill.style.height=((currentIndex+1)/spineItems.length*100)+'%';
 }
 
-/* scroll to a chapter index and save */
-async function scrollToChapterIndex(i){
-  if(i < 0) i = 0;
-  if(i >= chapterNodes.length) i = chapterNodes.length - 1;
-  const node = chapterNodes[i];
-  if(!node) return;
-  node.el.scrollIntoView({behavior:'smooth', block:'start'});
-  currentChapterIndex = i;
-  // save
-  const obj = await getSeriesById(currentSeriesId);
-  if(obj){ obj.lastIndex = i; await saveSeries(obj); }
-  updateProgressBar();
-}
+// Navigation
+prevBtn.onclick=()=>{if(currentIndex>0){currentIndex--;renderChapter();updateProgress();}};
+nextBtn.onclick=()=>{if(currentIndex<spineItems.length-1){currentIndex++;renderChapter();updateProgress();}};
+function updateProgress(){if(currentSeries){currentSeries.lastIndex=currentIndex;saveSeries(currentSeries);}}
 
-/* update progress by which chapter is most visible */
-function updateProgressByScroll(){
-  if(chapterNodes.length === 0) return;
-  const rect = viewer.getBoundingClientRect();
-  let bestIdx = 0; let bestVisible = 0;
-  chapterNodes.forEach((cn, idx)=>{
-    const r = cn.el.getBoundingClientRect();
-    const visible = Math.max(0, Math.min(r.bottom, rect.bottom) - Math.max(r.top, rect.top));
-    if(visible > bestVisible){ bestVisible = visible; bestIdx = idx; }
-  });
-  if(bestIdx !== currentChapterIndex){
-    currentChapterIndex = bestIdx;
-    // persist
-    getSeriesById(currentSeriesId).then(obj=>{
-      if(obj){ obj.lastIndex = bestIdx; saveSeries(obj); }
-    });
-  }
-  updateProgressBar();
-}
+// File upload
+epubInput.onchange=async e=>{
+  if(!e.target.files[0]) return;
+  const file=e.target.files[0];
+  const id=file.name;
+  currentSeries={id,file,title:file.name,lastIndex:0};
+  library.push(currentSeries);
+  saveSeries(currentSeries); loadLibrary();
+};
+coverInput.onchange=e=>{
+  if(!currentSeries) return alert('Select series first (right click)');
+  const file=e.target.files[0];
+  const url=URL.createObjectURL(file);
+  currentSeries.cover=url; saveSeries(currentSeries); loadLibrary();
+};
 
-/* update progress bar (percent of chapters read) */
-function updateProgressBar(){
-  if(chapterNodes.length === 0){ progressFill.style.height = '0%'; return; }
-  const pct = Math.round(((currentChapterIndex+1) / chapterNodes.length) * 100);
-  progressFill.style.height = pct + '%';
-}
+// Delete
+document.getElementById('clearSeries').onclick=()=>{
+  if(!currentSeries) return alert('Right click a series first'); 
+  db.transaction(STORE_NAME,'readwrite').objectStore(STORE_NAME).delete(currentSeries.id).oncomplete=()=>{currentSeries=null;loadLibrary();};
+};
 
-/* helper throttle */
-function throttle(fn, wait){ let t = null; return function(...a){ if(t) return; t = setTimeout(()=>{ t = null; fn(...a); }, wait); }; }
+// Back to library
+gotoHome.onclick=()=>{readerWrap.style.display='none';}
 
-/* ---------- Navigation ---------- */
-document.getElementById('nextBtn').addEventListener('click', ()=>{ if(currentChapterIndex < chapterNodes.length - 1) playFog(()=> scrollToChapterIndex(currentChapterIndex + 1)); });
-document.getElementById('prevBtn').addEventListener('click', ()=>{ if(currentChapterIndex > 0) playFog(()=> scrollToChapterIndex(currentChapterIndex - 1)); });
-function playFog(action){
-  fog.style.opacity = 1;
-  setTimeout(()=>{ try{ action(); }catch(e){} setTimeout(()=> fog.style.opacity = 0, 360); }, 180);
-}
-
-/* keyboard */
-document.addEventListener('keydown', (e)=>{
-  const tag = document.activeElement && document.activeElement.tagName.toLowerCase();
-  if(tag === 'input' || tag === 'textarea') return;
-  if(!readerWrap.style.display || readerWrap.style.display === 'none') return;
-  if(e.code === 'ArrowRight'){ e.preventDefault(); if(currentChapterIndex < chapterNodes.length -1) playFog(()=>scrollToChapterIndex(currentChapterIndex+1)); }
-  else if(e.code === 'ArrowLeft'){ e.preventDefault(); if(currentChapterIndex > 0) playFog(()=>scrollToChapterIndex(currentChapterIndex-1)); }
-  else if(e.code === 'Space' || e.code === 'ArrowDown'){ e.preventDefault(); viewer.scrollBy({top: 320, behavior:'smooth'}); }
-  else if(e.code === 'ShiftRight' || e.code === 'ArrowUp'){ e.preventDefault(); viewer.scrollBy({top: -320, behavior:'smooth'}); }
-});
-
-/* download current EPUB */
-downloadEpubBtn.addEventListener('click', async ()=>{
-  if(!currentSeriesId){ alert('No book open'); return; }
-  const s = await getSeriesById(currentSeriesId);
-  if(!s || !s.epub){ alert('EPUB missing'); return; }
-  const blob = s.epub instanceof Blob ? s.epub : new Blob([s.epub], {type:'application/epub+zip'});
-  downloadBlob(blob, (s.title || 'book') + '.epub');
-});
-
-/* goto home (library) */
-gotoHome.addEventListener('click', ()=>{
-  // cleanup blob URLs in images (optional)
-  // simply hide reader and show library
-  readerWrap.style.display = 'none';
-  homepageView.style.display = 'block';
-  viewer.innerHTML = '';
-  chapterNodes = [];
-  currentChapterIndex = -1;
-  renderLibrary();
-});
-
-/* cursor glow */
-document.addEventListener('mousemove', e=>{
-  cursorGlow.style.left = e.clientX + 'px';
-  cursorGlow.style.top = e.clientY + 'px';
-});
-
-/* ---------- Init ---------- */
-(async function init(){
-  try{ await openDB(); await renderLibrary(); showStatus('Ready'); }catch(e){ console.error(e); showStatus('Error'); }
-})();
+// Init
+loadLibrary();
 </script>
 </body>
 </html>
