@@ -1,428 +1,97 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Comick — Library (Page One)</title>
-
-<!-- Font: free -->
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comick Reader – Stage 2</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/epubjs/dist/epub.min.js"></script>
 <style>
-:root{
-  --bg:#0b0b0d;
-  --card:#101014;
-  --muted:#9b9b9b;
-  --accent:#f5f5dc;
-  --glass: rgba(255,255,255,0.04);
-  --glass-strong: rgba(245,245,220,0.06);
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
+body{
+  background:radial-gradient(circle at top,#121212,#000);
+  color:#eee;overflow:hidden;
 }
-
-*{box-sizing:border-box}
-html,body{height:100%;margin:0;font-family:'Playfair Display',serif;background:linear-gradient(180deg,#070708,var(--bg));color:var(--accent);-webkit-font-smoothing:antialiased}
-a{color:var(--accent);text-decoration:none}
-
-/* Layout */
-.app{display:flex;min-height:100vh}
-.sidebar{
-  width:340px;padding:28px;border-right:1px solid rgba(255,255,255,0.03);
-  background:linear-gradient(180deg,#0b0b0d,#0f0f12);
+h1{font-size:2.4rem;text-align:center;padding:20px;font-weight:600;}
+.container{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:calc(100vh - 100px);
 }
-.brand{display:flex;align-items:center;gap:12px;margin-bottom:18px}
-.logo{
-  width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#2b2b2b,#111);
-  display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent);box-shadow:0 6px 18px rgba(0,0,0,0.7)
+button{
+  background:rgba(255,255,255,0.08);
+  border:1px solid rgba(255,255,255,0.2);
+  color:#fff;padding:10px 20px;border-radius:12px;
+  font-size:1rem;cursor:pointer;backdrop-filter:blur(8px);
+  transition:0.3s;
 }
-.brand h1{font-size:18px;margin:0;letter-spacing:1px}
-
-/* Controls */
-.controls{background:linear-gradient(180deg,var(--card),#0d0d10);padding:12px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,0.5)}
-.row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
-.input-hidden{display:none}
-.button{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 12px;border-radius:10px;color:var(--accent);cursor:pointer;transition:all .14s ease;display:inline-flex;align-items:center;gap:8px}
-.button:hover{border-color:var(--accent);transform:translateY(-2px)}
-.small{font-size:13px;color:var(--muted)}
-
-/* Upload status */
-.status{margin-top:8px;color:var(--muted);font-size:13px}
-
-/* Library main */
-.main{flex:1;padding:28px;display:flex;flex-direction:column}
-.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
-.header h2{margin:0;font-size:20px}
-.header .hint{color:var(--muted);font-size:13px}
-
-/* Tiles */
-.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:18px}
-.tile{
-  border-radius:12px;overflow:hidden;background:linear-gradient(180deg,#121214,#0f0f11);
-  box-shadow:0 10px 28px rgba(0,0,0,0.6);cursor:pointer;position:relative;transition:transform .16s ease,box-shadow .16s ease,filter .16s ease;
-  min-height:220px;display:flex;flex-direction:column;
+button:hover{
+  background:rgba(255,255,255,0.2);
+  box-shadow:0 0 20px rgba(255,255,255,0.2);
 }
-.tile:hover{transform:translateY(-6px);box-shadow:0 22px 48px rgba(0,0,0,0.7);filter:brightness(1.04)}
-.tile img{width:100%;height:100%;object-fit:cover;display:block;flex:1}
-.meta{position:absolute;left:0;right:0;bottom:0;padding:10px;background:linear-gradient(180deg,transparent,rgba(0,0,0,0.65));text-align:center;font-size:13px;color:var(--accent)}
-
-/* Modal preview */
-.modal-backdrop{position:fixed;inset:0;background:rgba(2,2,2,0.65);display:flex;align-items:center;justify-content:center;z-index:60}
-.modal{width:760px;max-width:92%;background:linear-gradient(180deg,#0b0b0d,#0f0f12);border-radius:12px;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,0.6);color:var(--accent);display:grid;grid-template-columns:260px 1fr;gap:18px}
-.modal .cover{width:100%;height:360px;border-radius:8px;overflow:hidden;background:#0b0b0b;display:flex;align-items:center;justify-content:center}
-.modal .body h3{margin:0 0 8px 0}
-.modal .body .meta{color:var(--muted);font-size:13px;margin-bottom:12px}
-.modal .actions{display:flex;gap:8px;margin-top:12px}
-.modal .btn{background:transparent;border:1px solid rgba(255,255,255,.06);padding:8px 12px;border-radius:10px;color:var(--accent);cursor:pointer}
-
-/* Cursor orb */
-.cursor-orb{position:fixed;width:10px;height:10px;border-radius:50%;pointer-events:none;mix-blend-mode:screen;box-shadow:0 0 12px 4px rgba(245,245,220,0.45);transform:translate(-50%,-50%);z-index:9999;transition:all .09s ease}
-.cursor-orb.hover{box-shadow:0 0 18px 7px rgba(245,245,220,0.7);transform:translate(-50%,-50%) scale(1.25)}
-
-/* responsive tweaks */
-@media (max-width:900px){
-  .sidebar{display:none}
-  .modal{width:92%;grid-template-columns:1fr}
-  .modal .cover{height:260px}
+#reader{
+  width:80%;height:70vh;
+  margin-top:20px;
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:0 0 25px rgba(255,255,255,0.1);
+  background:rgba(255,255,255,0.05);
+}
+#cursorOrb{
+  position:fixed;top:0;left:0;width:26px;height:26px;
+  border-radius:50%;
+  pointer-events:none;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(circle,rgba(255,255,255,0.9),rgba(255,255,255,0.1));
+  box-shadow:0 0 20px rgba(255,255,255,0.4);
+  transition:transform 0.15s ease, box-shadow 0.2s ease;
+  z-index:9999;
+}
+button:hover ~ #cursorOrb{
+  transform:translate(-50%,-50%) scale(1.3);
+  box-shadow:0 0 30px rgba(255,255,255,0.8);
 }
 </style>
 </head>
 <body>
-<div class="app">
-  <!-- SIDEBAR / PAGE ONE -->
-  <aside class="sidebar" aria-label="Library controls">
-    <div class="brand">
-      <div class="logo">C</div>
-      <h1>Comick</h1>
-    </div>
 
-    <div class="controls" role="region" aria-label="Upload controls">
-      <div class="row">
-        <label class="button" title="Choose EPUB file">
-          EPUB
-          <input id="epubInput" class="input-hidden" type="file" accept=".epub">
-        </label>
-
-        <label class="button" title="Choose cover image (optional)">
-          Cover
-          <input id="coverInput" class="input-hidden" type="file" accept="image/*">
-        </label>
-
-        <button id="addBtn" class="button" title="Add series">Add</button>
-      </div>
-
-      <div class="row" style="margin-top:6px">
-        <button id="importBtn" class="button" title="Import from URL (future)">Import</button>
-        <button id="clearBtn" class="button" title="Clear library">Clear</button>
-      </div>
-
-      <div class="status small" id="status">Ready — select EPUB and optional cover, then click Add.</div>
-    </div>
-
-    <div style="margin-top:18px" class="small">Library (click to preview • right-click to delete)</div>
-    <div id="tiles" class="tiles" style="margin-top:12px"></div>
-  </aside>
-
-  <!-- MAIN / PAGE ONE CONTENT -->
-  <main class="main">
-    <div class="header">
-      <h2>Your Library</h2>
-      <div class="hint small">Aesthetic page one. We'll wire the reader in Step 2.</div>
-    </div>
-
-    <!-- empty state / grid shown from sidebar tiles (mirror) -->
-    <div id="gridPlaceholder" class="small" style="color:var(--muted)">
-      Add a series on the left to populate your library.
-    </div>
-  </main>
+<h1>📖 Comick EPUB Reader</h1>
+<div class="container">
+  <input type="file" id="fileInput" accept=".epub" hidden>
+  <button id="uploadBtn">Upload EPUB</button>
+  <div id="reader"></div>
 </div>
-
-<!-- Modal preview (hidden until use) -->
-<div id="modal" style="display:none" aria-hidden="true"></div>
-
-<!-- Cursor orb -->
-<div id="cursorOrb" class="cursor-orb" aria-hidden="true"></div>
+<div id="cursorOrb"></div>
 
 <script>
-/* ============================
-   Page One: Aesthetic Library
-   - IndexedDB storage (EPUB + optional cover)
-   - Clean upload UI
-   - tiles, preview modal
-   - right-click delete
-   - subtle cursor orb that follows cursor exactly
-   ============================ */
+// --- Cursor orb ---
+const orb=document.getElementById('cursorOrb');
+document.addEventListener('mousemove',e=>{
+  orb.style.left=e.clientX+'px';
+  orb.style.top=e.clientY+'px';
+});
 
-document.addEventListener('DOMContentLoaded', () => {
-  /* Elements */
-  const epubInput = document.getElementById('epubInput');
-  const coverInput = document.getElementById('coverInput');
-  const addBtn = document.getElementById('addBtn');
-  const importBtn = document.getElementById('importBtn'); // placeholder (future)
-  const clearBtn = document.getElementById('clearBtn');
-  const status = document.getElementById('status');
-  const tiles = document.getElementById('tiles');
-  const gridPlaceholder = document.getElementById('gridPlaceholder');
-  const modalRoot = document.getElementById('modal');
-  const cursorOrb = document.getElementById('cursorOrb');
+// --- EPUB logic ---
+const uploadBtn=document.getElementById('uploadBtn');
+const fileInput=document.getElementById('fileInput');
+const readerDiv=document.getElementById('reader');
+let rendition=null;
 
-  /* Cursor orb: exact follow, subtle hover amplification via class toggles */
-  document.addEventListener('mousemove', (ev) => {
-    cursorOrb.style.left = ev.clientX + 'px';
-    cursorOrb.style.top  = ev.clientY + 'px';
+uploadBtn.onclick=()=>fileInput.click();
+
+fileInput.addEventListener('change',async e=>{
+  const file=e.target.files[0];
+  if(!file)return;
+  const url=URL.createObjectURL(file);
+  readerDiv.innerHTML=""; // clear
+  const book=ePub(url);
+  rendition=book.renderTo("reader",{width:"100%",height:"100%"});
+  rendition.display();
+  rendition.themes.default({
+    'body':{'color':'#fff','background':'transparent','line-height':'1.6','font-size':'1.1rem'},
+    'p':{'margin':'1em 0'}
   });
-  // Delegated hover amplification for interactive targets
-  document.addEventListener('mouseover', (ev) => {
-    if (ev.target.closest('.button') || ev.target.closest('.tile')) cursorOrb.classList.add('hover');
-  });
-  document.addEventListener('mouseout', (ev) => {
-    if (ev.target.closest('.button') || ev.target.closest('.tile')) cursorOrb.classList.remove('hover');
-  });
-
-  /* IndexedDB helpers */
-  const DB_NAME = 'comick_page1_db';
-  const STORE = 'series';
-  let dbPromise = null;
-
-  function openDB(){
-    if (dbPromise) return dbPromise;
-    dbPromise = new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, 1);
-      req.onupgradeneeded = (e) => {
-        const db = e.target.result;
-        if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'id' });
-      };
-      req.onsuccess = (e) => resolve(e.target.result);
-      req.onerror = (e) => reject(e);
-    });
-    return dbPromise;
-  }
-
-  async function saveSeries(obj){
-    const db = await openDB();
-    return new Promise((res, rej) => {
-      const tx = db.transaction(STORE, 'readwrite');
-      tx.objectStore(STORE).put(obj);
-      tx.oncomplete = () => res();
-      tx.onerror = (err) => rej(err);
-    });
-  }
-
-  async function getAllSeries(){
-    const db = await openDB();
-    return new Promise((res) => {
-      const tx = db.transaction(STORE, 'readonly');
-      const rq = tx.objectStore(STORE).getAll();
-      rq.onsuccess = () => res(rq.result || []);
-      rq.onerror = () => res([]);
-    });
-  }
-
-  async function deleteSeries(id){
-    const db = await openDB();
-    return new Promise((res, rej) => {
-      const tx = db.transaction(STORE, 'readwrite');
-      tx.objectStore(STORE).delete(id);
-      tx.oncomplete = () => res();
-      tx.onerror = (e) => rej(e);
-    });
-  }
-
-  async function clearLibrary(){
-    const db = await openDB();
-    return new Promise((res, rej) => {
-      const tx = db.transaction(STORE, 'readwrite');
-      tx.objectStore(STORE).clear();
-      tx.oncomplete = () => res();
-      tx.onerror = (e) => rej(e);
-    });
-  }
-
-  /* Upload state */
-  let chosenEpub = null;
-  let chosenCover = null;
-
-  epubInput.addEventListener('change', (e) => {
-    chosenEpub = e.target.files && e.target.files[0] ? e.target.files[0] : null;
-    status.textContent = chosenEpub ? `EPUB selected: ${chosenEpub.name}` : 'EPUB cleared';
-  });
-
-  coverInput.addEventListener('change', (e) => {
-    chosenCover = e.target.files && e.target.files[0] ? e.target.files[0] : null;
-    if (chosenCover) status.textContent = `Cover selected: ${chosenCover.name}`;
-  });
-
-  addBtn.addEventListener('click', async () => {
-    if (!chosenEpub) { alert('Select an EPUB file first.'); return; }
-    // generate id and metadata
-    const id = Date.now().toString() + '-' + Math.floor(Math.random()*9999);
-    const title = chosenEpub.name.replace(/\.epub$/i,'');
-    const entry = {
-      id,
-      title,
-      epubBlob: chosenEpub,
-      coverBlob: chosenCover || null,
-      createdAt: Date.now()
-    };
-    try {
-      await saveSeries(entry);
-      chosenEpub = null; chosenCover = null;
-      epubInput.value=''; coverInput.value='';
-      status.textContent = `Saved "${title}"`;
-      await renderTiles();
-    } catch (err) {
-      console.error('save error', err);
-      status.textContent = 'Save failed — see console';
-    }
-  });
-
-  clearBtn.addEventListener('click', async () => {
-    if (!confirm('Clear library? This removes everything stored locally.')) return;
-    try {
-      await clearLibrary();
-      status.textContent = 'Library cleared';
-      await renderTiles();
-    } catch (err) {
-      console.error('clear error', err);
-      status.textContent = 'Clear failed';
-    }
-  });
-
-  importBtn.addEventListener('click', () => {
-    alert('Import from URL is a step we will implement in Step 3. For now use local EPUB files.');
-  });
-
-  /* Render tiles */
-  async function renderTiles(){
-    tiles.innerHTML = '';
-    const list = await getAllSeries();
-    if (!list || list.length === 0) {
-      gridPlaceholder.style.display = 'block';
-      return;
-    }
-    gridPlaceholder.style.display = 'none';
-    for (const s of list) {
-      const el = document.createElement('div');
-      el.className = 'tile';
-      el.dataset.id = s.id;
-
-      const img = document.createElement('img');
-      if (s.coverBlob) {
-        img.src = URL.createObjectURL(s.coverBlob);
-        // note: objectURL is not revoked here; acceptable for this UI demo
-      } else {
-        // svg placeholder
-        const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='320' height='480'><rect fill='#121214' width='100%' height='100%'/><text x='50%' y='50%' fill='#bdbdb4' font-family='serif' font-size='18' text-anchor='middle'>No Cover</text></svg>`;
-        img.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
-      }
-      el.appendChild(img);
-
-      const meta = document.createElement('div');
-      meta.className = 'meta';
-      meta.textContent = s.title || 'Untitled';
-      el.appendChild(meta);
-
-      // click -> preview modal (no reader yet)
-      el.addEventListener('click', ()=> openPreview(s));
-
-      // right-click -> delete without opening
-      el.addEventListener('contextmenu', async (ev) => {
-        ev.preventDefault();
-        if (!confirm(`Delete "${s.title||'Untitled'}"?`)) return;
-        try {
-          await deleteSeries(s.id);
-          status.textContent = `Deleted "${s.title||s.id}"`;
-          await renderTiles();
-        } catch (err) {
-          console.error('delete failed', err);
-          status.textContent = 'Delete failed';
-        }
-      });
-
-      tiles.appendChild(el);
-    }
-  }
-
-  /* Preview modal (Page One: preview only) */
-  function openPreview(series){
-    modalRoot.innerHTML = ''; // clear
-    modalRoot.style.display = 'flex';
-    modalRoot.setAttribute('aria-hidden','false');
-
-    const backdrop = document.createElement('div');
-    backdrop.className = 'modal-backdrop';
-
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-
-    const coverWrap = document.createElement('div');
-    coverWrap.className = 'cover';
-    const coverImg = document.createElement('img');
-    coverImg.style.width = '100%';
-    coverImg.style.height = '100%';
-    coverImg.style.objectFit = 'cover';
-    if (series.coverBlob) coverImg.src = URL.createObjectURL(series.coverBlob);
-    else coverImg.src = 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='320' height='480'><rect fill='#111' width='100%' height='100%'/><text x='50%' y='50%' fill='#bdbdb4' font-family='serif' font-size='18' text-anchor='middle'>No Cover</text></svg>`);
-    coverWrap.appendChild(coverImg);
-
-    const body = document.createElement('div');
-    body.className = 'body';
-    const title = document.createElement('h3'); title.textContent = series.title || 'Untitled';
-    const info = document.createElement('div'); info.className = 'meta small'; info.textContent = `Added on ${new Date(series.createdAt).toLocaleString()}`;
-    const note = document.createElement('div'); note.style.marginTop='8px'; note.textContent = 'Reader not wired yet — Step 2 will add the immersive reader.';
-
-    const actions = document.createElement('div'); actions.className='actions';
-    const openBtn = document.createElement('button'); openBtn.className='btn'; openBtn.textContent='Open (Step 2)';
-    openBtn.disabled = true;
-    const delBtn = document.createElement('button'); delBtn.className='btn'; delBtn.textContent='Delete';
-    delBtn.addEventListener('click', async ()=> {
-      if (!confirm(`Delete "${series.title||'Untitled'}"?`)) return;
-      try {
-        await deleteSeries(series.id);
-        status.textContent = `Deleted "${series.title||series.id}"`;
-        closeModal();
-        await renderTiles();
-      } catch (err) {
-        console.error(err); status.textContent = 'Delete failed';
-      }
-    });
-
-    const closeBtn = document.createElement('button'); closeBtn.className='btn'; closeBtn.textContent='Close';
-    closeBtn.addEventListener('click', closeModal);
-
-    actions.appendChild(openBtn);
-    actions.appendChild(delBtn);
-    actions.appendChild(closeBtn);
-
-    body.appendChild(title);
-    body.appendChild(info);
-    body.appendChild(note);
-    body.appendChild(actions);
-
-    modal.appendChild(coverWrap);
-    modal.appendChild(body);
-    backdrop.appendChild(modal);
-    modalRoot.appendChild(backdrop);
-
-    // close on click outside or Esc
-    backdrop.addEventListener('click', (e) => {
-      if (e.target === backdrop) closeModal();
-    });
-    document.addEventListener('keydown', function escClose(e){
-      if (e.key === 'Escape') { closeModal(); document.removeEventListener('keydown', escClose); }
-    });
-    function closeModal(){
-      modalRoot.innerHTML = '';
-      modalRoot.style.display = 'none';
-      modalRoot.setAttribute('aria-hidden','true');
-    }
-  }
-
-  /* init render */
-  renderTiles().catch(err=>{ console.error(err); status.textContent = 'Init failed'; });
-
-  /* Small UX: prevent accidental drag of images */
-  document.addEventListener('dragstart', (e)=> { if (e.target.tagName === 'IMG') e.preventDefault(); });
-
-  // End DOMContentLoaded
 });
 </script>
+
 </body>
 </html>
