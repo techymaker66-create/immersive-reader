@@ -3,172 +3,159 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NightLit Reader</title>
-
-<!-- Tailwind CDN for styling -->
-<script src="https://cdn.tailwindcss.com"></script>
-
-<!-- React + ReactDOM CDN -->
-<script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-
-<!-- Babel for JSX in browser -->
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-<!-- epub.js CDN -->
-<script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
-
+<title>Webnovel Reader</title>
 <style>
-  /* Gold gradient style for cards and buttons */
-  .gold-gradient {
-    background: linear-gradient(135deg, #FFD700, #FFA500);
-  }
-  .book-card:hover {
-    transform: scale(1.03);
-    box-shadow: 0 8px 20px rgba(255,215,0,0.4);
-  }
-  .reader-progress-bar {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 6px;
-    background: #FFD700AA;
-    border-radius: 3px;
-    transition: height 0.2s ease;
-  }
+body {
+    background: #0f0f0f;
+    color: #eee;
+    font-family: 'Georgia', serif;
+    margin:0; padding:0;
+}
+h1,h2 { text-align:center; }
+#home, #reader { padding: 20px; }
+#bookList { display:flex; flex-wrap:wrap; justify-content:center; }
+.book-item { margin:10px; cursor:pointer; transition: transform 0.2s; text-align:center; }
+.book-item:hover { transform: scale(1.05); }
+.book-item img { width:120px; height:180px; border-radius:10px; }
+#reader { display:none; max-width:800px; margin:auto; }
+#chapterContainer { max-width:700px; margin:auto; line-height:1.8; overflow-y:auto; max-height:70vh; padding-right:10px; }
+#progressBarContainer { width:100%; height:5px; background:#333; margin:10px 0; }
+#progressBar { height:5px; background:#ff9c00; width:0%; }
+button { background:#222; color:#eee; border:none; padding:8px 15px; cursor:pointer; border-radius:5px; margin:5px; }
+button:hover { background:#444; }
+input[type=file] { margin:5px; }
 </style>
 </head>
-<body class="bg-[#0b0f1a] text-[#fef6e4] font-sans">
+<body>
+<div id="home">
+    <h1>📖 My Webnovels</h1>
+    <input type="file" id="epubInput" accept=".epub">
+    <input type="file" id="coverInput" accept="image/*">
+    <button id="addBook">Add Book</button>
+    <div id="bookList"></div>
+</div>
 
-<div id="root" class="min-h-screen p-4"></div>
-
-<script type="text/babel">
-const { useState, useEffect, useRef } = React;
-
-const STORAGE_KEY = "nightlit_reader_v2";
-
-function bookId(name, size) {
-  return `${name}_${size}`;
-}
-
-function App() {
-  const [library, setLibrary] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]"); }
-    catch(e){ return []; }
-  });
-  const [activeBookId, setActiveBookId] = useState(null);
-  const [bookObj, setBookObj] = useState(null);
-  const [rendition, setRendition] = useState(null);
-  const [progress, setProgress] = useState(0);
-  const [showLibrary, setShowLibrary] = useState(true);
-  const [toc, setToc] = useState([]);
-  const viewerRef = useRef(null);
-
-  useEffect(()=>{
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(library));
-  }, [library]);
-
-  // Upload EPUB + optional cover
-  const handleUpload = async (e) => {
-    const files = e.target.files;
-    if(!files || files.length === 0) return;
-
-    for(const file of files){
-      const id = bookId(file.name, file.size);
-      const url = URL.createObjectURL(file);
-
-      // Ask for optional cover
-      let coverUrl = null;
-      const addCover = confirm(`Do you want to upload a custom cover for "${file.name}"?`);
-      if(addCover){
-        const coverFile = await new Promise(resolve => {
-          const input = document.createElement('input');
-          input.type = "file";
-          input.accept = "image/*";
-          input.onchange = ()=>resolve(input.files[0]);
-          input.click();
-        });
-        if(coverFile){
-          coverUrl = URL.createObjectURL(coverFile);
-        }
-      }
-
-      const newBook = {id, title:file.name.replace(/\.epub$/i,""), fileName:file.name, size:file.size, url, cover:coverUrl, lastCfi:null, percent:0};
-      setLibrary(prev=>[newBook, ...prev.filter(b=>b.id!==id)]);
-    }
-    e.target.value = "";
-  };
-
-  const openBook = async (id) => {
-    const b = library.find(x=>x.id===id);
-    if(!b) return;
-    setShowLibrary(false); setActiveBookId(id);
-
-    try { rendition && rendition.destroy(); bookObj && bookObj.destroy && bookObj.destroy(); } catch(e){}
-
-    const book = ePub(b.url); setBookObj(book);
-    await book.ready;
-    if(!book.locations || !book.locations.length) await book.locations.generate(1600);
-
-    const r = book.renderTo(viewerRef.current,{width:"100%", height:"100%", flow:"paginated"});
-    r.themes.default({body:{background:"#0b0f1a", color:"#fef6e4", fontFamily:"Inter, sans-serif"}});
-    r.on("relocated", loc=>{
-      let p = 0;
-      try{ if(book.locations && book.locations.length) p=Math.round(book.locations.percentageFromCfi(loc.start.cfi)*100); } catch(e){}
-      setProgress(p);
-      setLibrary(prev => prev.map(x=>x.id===id?{...x,lastCfi:loc.start.cfi,percent:p}:x));
-    });
-    r.display(b.lastCfi||undefined);
-    setRendition(r);
-    const _toc = await book.getToc(); setToc(_toc);
-  };
-
-  const closeReader = () => { try{rendition&&rendition.destroy();}catch(e){} setRendition(null); setBookObj(null); setActiveBookId(null); setShowLibrary(true); setProgress(0);}
-  const nextPage = () => {rendition&&rendition.next();}
-  const prevPage = () => {rendition&&rendition.prev();}
-
-  return (
-    <div className="max-w-6xl mx-auto">
-      <header className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-orange-500">NightLit Reader</h1>
-        <label className="px-3 py-1 rounded-md bg-[#1a1f2e] hover:bg-[#222b44] cursor-pointer">
-          + Upload EPUB
-          <input type="file" accept=".epub" multiple onChange={handleUpload} className="hidden"/>
-        </label>
-      </header>
-
-      {showLibrary && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          {library.map(b=>(
-            <div key={b.id} className="book-card p-4 rounded-xl bg-gradient-to-br from-[#1a1f2e] to-[#111722] cursor-pointer shadow-md flex flex-col items-center justify-center" onClick={()=>openBook(b.id)}>
-              {b.cover ? <img src={b.cover} className="w-32 h-44 object-cover rounded-lg mb-2" /> : <div className="w-32 h-44 bg-[#222b44] rounded-lg flex items-center justify-center text-sm text-yellow-200 mb-2">No Cover</div>}
-              <div className="font-semibold text-center">{b.title}</div>
-              <div className="text-xs opacity-70 mt-1">{Math.round(b.percent||0)}%</div>
-            </div>
-          ))}
-          {library.length===0 && <div className="col-span-full text-center text-sm opacity-60 mt-6">No books uploaded yet.</div>}
-        </div>
-      )}
-
-      {!showLibrary && (
-        <div className="relative h-[70vh] rounded-2xl bg-[#0b0f1a] shadow-lg overflow-hidden">
-          <div ref={viewerRef} className="h-full w-full rounded-md" />
-          <div className="absolute top-4 left-4 flex flex-col gap-2">
-            <button onClick={prevPage} className="px-2 py-1 rounded-md gold-gradient hover:brightness-110">◀ Prev</button>
-            <button onClick={nextPage} className="px-2 py-1 rounded-md gold-gradient hover:brightness-110">Next ▶</button>
-          </div>
-          <div className="absolute top-4 right-4 flex items-center gap-2">
-            <span className="text-sm opacity-80">{progress}%</span>
-            <button onClick={closeReader} className="px-2 py-1 rounded-md bg-[#222b44] hover:bg-[#333c5a]">Close</button>
-          </div>
-          <div className="reader-progress-bar" style={{height: progress+"%"}}></div>
-        </div>
-      )}
+<div id="reader">
+    <button id="backHome">← Back</button>
+    <h2 id="bookTitle"></h2>
+    <div id="progressBarContainer"><div id="progressBar"></div></div>
+    <div id="chapterContainer"></div>
+    <div style="text-align:center; margin-top:10px;">
+        <button id="prevChapter">◀ Prev</button>
+        <button id="nextChapter">Next ▶</button>
     </div>
-  );
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
+<script>
+let db;
+let currentBookId = null;
+let bookList = [];
+let bookRendition, currentChapter = 0;
+
+const homeDiv = document.getElementById('home');
+const readerDiv = document.getElementById('reader');
+const bookListDiv = document.getElementById('bookList');
+const epubInput = document.getElementById('epubInput');
+const coverInput = document.getElementById('coverInput');
+const addBookBtn = document.getElementById('addBook');
+const bookTitle = document.getElementById('bookTitle');
+const chapterContainer = document.getElementById('chapterContainer');
+const progressBar = document.getElementById('progressBar');
+const backHome = document.getElementById('backHome');
+const prevChapterBtn = document.getElementById('prevChapter');
+const nextChapterBtn = document.getElementById('nextChapter');
+
+function openDB() {
+    const request = indexedDB.open("WebnovelDB", 1);
+    request.onupgradeneeded = function(e) {
+        db = e.target.result;
+        db.createObjectStore("books", { keyPath:"id", autoIncrement:true });
+    };
+    request.onsuccess = function(e) {
+        db = e.target.result;
+        loadBooks();
+    };
+    request.onerror = function(e) { console.error("DB error", e); }
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+function saveBook(epubData, coverURL, title) {
+    const tx = db.transaction("books","readwrite");
+    const store = tx.objectStore("books");
+    store.add({title, epubData, coverURL, progress:0});
+    tx.oncomplete = loadBooks;
+}
+
+function loadBooks() {
+    const tx = db.transaction("books","readonly");
+    const store = tx.objectStore("books");
+    const req = store.getAll();
+    req.onsuccess = function(e){
+        bookList = e.target.result;
+        renderBooks();
+    };
+}
+
+function renderBooks() {
+    bookListDiv.innerHTML = '';
+    bookList.forEach(book => {
+        const div = document.createElement('div');
+        div.className = 'book-item';
+        div.innerHTML = `<img src="${book.coverURL}" alt="${book.title}"><div>${book.title}</div>`;
+        div.onclick = () => openReader(book.id);
+        bookListDiv.appendChild(div);
+    });
+}
+
+addBookBtn.onclick = () => {
+    const epubFile = epubInput.files[0];
+    const coverFile = coverInput.files[0];
+    if(!epubFile || !coverFile) return alert("Select EPUB and cover!");
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const coverURL = URL.createObjectURL(coverFile);
+        saveBook(e.target.result, coverURL, epubFile.name);
+    };
+    reader.readAsArrayBuffer(epubFile);
+}
+
+function openReader(id) {
+    const book = bookList.find(b=>b.id===id);
+    if(!book) return;
+    currentBookId = id;
+    homeDiv.style.display='none';
+    readerDiv.style.display='block';
+    bookTitle.textContent = book.title;
+    chapterContainer.innerHTML = '';
+    currentChapter = book.progress || 0;
+
+    const bookBlob = new Blob([book.epubData], {type:"application/epub+zip"});
+    const bookURL = URL.createObjectURL(bookBlob);
+    const epub = ePub(bookURL);
+    bookRendition = epub.renderTo(chapterContainer,{ width:'100%', height:'70vh' });
+    epub.ready.then(()=>{
+        bookRendition.display(currentChapter);
+        updateProgress();
+        bookRendition.on("relocated", loc => updateProgress());
+    });
+}
+
+function updateProgress() {
+    const book = bookList.find(b=>b.id===currentBookId);
+    if(!book) return;
+    let loc = bookRendition.location? bookRendition.location.start.cfi : 0;
+    progressBar.style.width = `${bookRendition.location? bookRendition.location.start.percentage*100 : 0}%`;
+    book.progress = loc;
+    const tx = db.transaction("books","readwrite");
+    tx.objectStore("books").put(book);
+}
+
+backHome.onclick = () => { readerDiv.style.display='none'; homeDiv.style.display='block'; }
+prevChapterBtn.onclick = ()=> bookRendition.prev();
+nextChapterBtn.onclick = ()=> bookRendition.next();
+
+openDB();
 </script>
 </body>
 </html>
