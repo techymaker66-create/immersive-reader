@@ -1,443 +1,163 @@
-<!-- /index.html -->
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Immersive Reader — EPUB (Client-only)</title>
-  <!-- Minimal, modern UI -->
+  <title>Immersive Reader v2</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/epubjs/dist/epub.min.js"></script>
   <style>
-    :root{
-      --bg:#0b0f13; --panel:rgba(255,255,255,0.03);
-      --accent:#8be9fd; --muted:#9aa6b2; --glass:rgba(255,255,255,0.04);
-      --orb: rgba(139,233,253,0.12);
+    body { background: radial-gradient(circle at top left, #0d1117, #050608 70%); overflow: hidden; }
+    .orb {
+      position: fixed; pointer-events: none; width: 28px; height: 28px;
+      border-radius: 50%; mix-blend-mode: screen;
+      background: radial-gradient(circle, rgba(80,180,255,0.5) 0%, transparent 70%);
+      box-shadow: 0 0 30px rgba(80,180,255,0.3);
+      transition: transform 0.15s ease, width 0.15s, height 0.15s;
+      z-index: 50;
     }
-    html,body{height:100%;margin:0;font-family:Inter, Georgia, serif;background:linear-gradient(180deg,#05060a 0%, #0b0f13 100%);color:#e6eef6;}
-    #app{display:grid;grid-template-columns:320px 1fr;height:100vh;gap:12px;padding:12px;box-sizing:border-box;}
-    /* Sidebar */
-    #sidebar{background:var(--panel);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px;box-shadow:0 6px 24px rgba(2,6,10,0.6);}
-    .header{font-weight:700;font-size:1.05rem;display:flex;align-items:center;justify-content:space-between;}
-    .status{font-size:0.85rem;color:var(--muted);}
-    #uploadRow{display:flex;gap:8px;align-items:center;}
-    #uploadRow input[type="file"]{display:block;}
-    button{background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.04);padding:8px 10px;border-radius:10px;color:#e8f6ff;cursor:pointer;}
-    button.ghost{background:transparent;border:1px dashed rgba(255,255,255,0.04);color:var(--muted);}
-    /* Library tiles */
-    #library{display:grid;grid-template-columns:1fr 1fr;gap:10px;overflow:auto;padding-bottom:6px;}
-    .tile{position:relative;background:var(--glass);border-radius:10px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease,filter .18s;}
-    .tile:hover{transform:translateY(-6px) scale(1.02);box-shadow:0 10px 30px rgba(0,0,0,0.6);filter:brightness(1.05);outline:2px solid rgba(139,233,253,0.06);}
-    .cover{width:100%;aspect-ratio:3/4;background:#111;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;}
-    .cover img{width:100%;height:100%;object-fit:cover;display:block;}
-    .title{font-size:0.9rem;text-align:center;padding:4px 6px;word-break:break-word;color:#e8f6ff;}
-    .empty{color:var(--muted);text-align:center;padding:18px;}
-    /* Main reader */
-    #reader{background:transparent;border-radius:14px;padding:0;display:flex;flex-direction:column;min-width:0;overflow:hidden;}
-    #readerHeader{display:flex;align-items:center;justify-content:space-between;padding:12px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));backdrop-filter:blur(6px);}
-    #viewerContainer{flex:1;display:flex;flex-direction:column;padding:18px;gap:8px;min-height:0;}
-    #viewer{flex:1;background:linear-gradient(180deg, rgba(0,0,0,0.3), rgba(0,0,0,0.2));border-radius:12px;padding:28px;overflow:auto;min-height:0;}
-    /* controls */
-    .controls{display:flex;gap:8px;align-items:center;}
-    .pill{padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03);color:var(--muted);font-size:0.9rem;}
-    /* prev/next */
-    #navButtons{display:flex;gap:10px;align-items:center;justify-content:center;padding:12px;}
-    #navButtons button{padding:10px 14px;border-radius:12px;}
-    /* Cursor orb */
-    #orb{position:fixed;pointer-events:none;width:24px;height:24px;border-radius:50%;transform:translate(-50%,-50%);mix-blend-mode:screen;z-index:9999;transition:transform .12s cubic-bezier(.2,.9,.2,1), box-shadow .12s, width .12s, height .12s;}
-    #orb::before{content:'';position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 40% 30%, rgba(255,255,255,0.6), transparent 25%), var(--orb);box-shadow:0 8px 26px rgba(139,233,253,0.12);}
-    /* small responsive */
-    @media (max-width:920px){#app{grid-template-columns:1fr;grid-template-rows:auto 1fr;}#sidebar{order:2;height:240px;overflow:auto;} #reader{order:1}}
-    /* tiny accessibility */
-    a.hidden{position:absolute;left:-9999px;}
+    .orb.hover { width: 48px; height: 48px; box-shadow: 0 0 60px rgba(80,180,255,0.4); }
+    #readerHeader { backdrop-filter: blur(12px); background: rgba(20,25,30,0.4); transition: transform 0.3s ease; }
+    #viewer iframe { width: 100% !important; height: 100% !important; }
   </style>
 </head>
-<body>
-  <div id="app" aria-live="polite">
-    <aside id="sidebar" role="complementary" aria-label="Library">
-      <div class="header"><span>Library</span><span class="status" id="status">Ready</span></div>
+<body class="h-screen flex flex-col text-gray-100 font-serif">
 
-      <div id="uploadRow" title="Add a new series">
-        <label class="pill" for="epubFile">EPUB</label>
-        <input id="epubFile" type="file" accept=".epub" />
-        <label class="pill" for="coverFile">Cover (optional)</label>
-        <input id="coverFile" type="file" accept="image/*" />
-        <button id="addBtn">Add</button>
+  <div class="flex flex-1">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="w-72 bg-black/30 backdrop-blur-lg border-r border-white/10 p-4 flex flex-col space-y-4">
+      <h1 class="text-lg font-bold">📚 Library</h1>
+
+      <div class="flex flex-col gap-2">
+        <input id="epubFile" type="file" accept=".epub" class="text-sm bg-white/5 p-2 rounded" />
+        <input id="coverFile" type="file" accept="image/*" class="text-sm bg-white/5 p-2 rounded" />
+        <button id="addBtn" class="bg-blue-500/80 hover:bg-blue-600 text-white rounded py-1.5">Add EPUB</button>
       </div>
 
-      <div id="library" aria-live="polite"></div>
-      <div class="empty" id="emptyMsg">No series yet — add an EPUB to begin.</div>
+      <div id="library" class="grid grid-cols-2 gap-3 overflow-y-auto flex-1 p-1"></div>
     </aside>
 
-    <main id="reader" role="main" aria-label="Reader">
-      <div id="readerHeader">
-        <div style="display:flex;gap:12px;align-items:center;">
-          <button id="backToLibrary" class="ghost">Library</button>
-          <div id="currentTitle" style="font-weight:700">Select a book</div>
+    <!-- Reader -->
+    <main class="flex-1 relative overflow-hidden">
+      <header id="readerHeader" class="sticky top-0 z-40 flex items-center justify-between p-3 border-b border-white/10">
+        <h2 id="bookTitle" class="font-semibold text-white/90">No book open</h2>
+        <div class="flex gap-2">
+          <button id="backBtn" class="px-2 py-1 text-sm bg-white/10 hover:bg-white/20 rounded">Library</button>
+          <button id="downloadBtn" class="px-2 py-1 text-sm bg-white/10 hover:bg-white/20 rounded">Download</button>
         </div>
-        <div class="controls">
-          <button id="downloadBtn" class="ghost" title="Download EPUB">Download EPUB</button>
-          <div id="progressHint" class="pill" style="display:none">Page —</div>
-        </div>
-      </div>
+      </header>
 
-      <div id="viewerContainer">
-        <div id="viewer" tabindex="0" aria-label="EPUB Viewer"></div>
-        <div id="navButtons">
-          <button id="prevBtn">Prev</button>
-          <button id="nextBtn">Next</button>
-        </div>
+      <section id="viewer" class="absolute inset-0 overflow-auto p-8 text-lg leading-relaxed text-gray-200"></section>
+
+      <div class="absolute bottom-4 inset-x-0 flex justify-center gap-3">
+        <button id="prevBtn" class="bg-white/10 hover:bg-white/20 px-3 py-1 rounded">◀ Prev</button>
+        <button id="nextBtn" class="bg-white/10 hover:bg-white/20 px-3 py-1 rounded">Next ▶</button>
       </div>
     </main>
   </div>
 
-  <div id="orb" aria-hidden="true"></div>
-
-  <!-- Dependencies -->
-  <script src="https://unpkg.com/epubjs/dist/epub.min.js"></script>
+  <div id="orb" class="orb"></div>
 
   <script>
-  /* TL;DR: small, self-contained IndexedDB wrapper + UI + epub.js renderer.
-     Keep comments minimal — only explain important/attention parts.
-  */
+    const orb = document.getElementById('orb');
+    const epubFile = document.getElementById('epubFile');
+    const coverFile = document.getElementById('coverFile');
+    const addBtn = document.getElementById('addBtn');
+    const library = document.getElementById('library');
+    const viewer = document.getElementById('viewer');
+    const backBtn = document.getElementById('backBtn');
+    const bookTitle = document.getElementById('bookTitle');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    let active = null, book = null, rendition = null, epubUrl = null;
 
-  /* -----------------------------
-     IndexedDB wrapper
-     ----------------------------- */
-  const DB_NAME = 'immersive-reader';
-  const STORE = 'series';
-  const DB_VERSION = 1;
-
-  function openDB(){
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, DB_VERSION);
-      req.onupgradeneeded = (e) => {
-        const db = e.target.result;
-        if(!db.objectStoreNames.contains(STORE)){
-          const os = db.createObjectStore(STORE, { keyPath: 'id' });
-          os.createIndex('created', 'created');
-        }
-      };
-      req.onerror = () => reject(req.error);
-      req.onsuccess = () => resolve(req.result);
-    });
-  }
-
-  async function withStore(txMode, fn){
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE, txMode);
-      const store = tx.objectStore(STORE);
-      let result;
-      try {
-        result = fn(store);
-      } catch (err) { reject(err); }
-      tx.oncomplete = () => resolve(result);
-      tx.onerror = () => reject(tx.error);
-      tx.onabort = () => reject(tx.error || new Error('Transaction aborted'));
-    });
-  }
-
-  async function addSeries(series){
-    series.id = Date.now().toString();
-    series.created = new Date().toISOString();
-    return withStore('readwrite', (s) => s.add(series));
-  }
-
-  async function getAllSeries(){
-    return withStore('readonly', (s) => {
-      const req = s.getAll();
-      req.onsuccess = () => {}; // result will be available when tx completes
-      return req;
-    });
-  }
-
-  async function deleteSeries(id){
-    return withStore('readwrite', (s) => s.delete(id));
-  }
-
-  async function updateSeries(id, patch){
-    return withStore('readwrite', (s) => {
-      const req = s.get(id);
-      req.onsuccess = () => {
-        const obj = req.result;
-        if(!obj) return;
-        Object.assign(obj, patch);
-        s.put(obj);
-      };
-      return req;
-    });
-  }
-
-  /* -----------------------------
-     UI & App State
-     ----------------------------- */
-  const $ = sel => document.querySelector(sel);
-  const $$ = sel => Array.from(document.querySelectorAll(sel));
-
-  const statusEl = $('#status');
-  const libraryEl = $('#library');
-  const emptyMsg = $('#emptyMsg');
-  const epubInput = $('#epubFile');
-  const coverInput = $('#coverFile');
-  const addBtn = $('#addBtn');
-  const backBtn = $('#backToLibrary');
-  const currentTitleEl = $('#currentTitle');
-  const viewerEl = $('#viewer');
-  const downloadBtn = $('#downloadBtn');
-  const prevBtn = $('#prevBtn');
-  const nextBtn = $('#nextBtn');
-  const progressHint = $('#progressHint');
-  const orb = $('#orb');
-
-  let appState = {
-    seriesList: [],
-    active: null, // active series object
-    book: null,
-    rendition: null,
-    epubUrl: null, // objectURL for epub
-    coverUrl: null
-  };
-
-  function setStatus(text, timeout=2500){
-    statusEl.textContent = text;
-    if(timeout) setTimeout(()=>{ if(statusEl.textContent===text) statusEl.textContent='Ready'; }, timeout);
-  }
-
-  function bytesToUrl(blob){ return URL.createObjectURL(blob); }
-
-  async function renderLibrary(){
-    libraryEl.innerHTML = '';
-    const raw = await getAllSeries();
-    // if getAllSeries returned a request object, wait for its result:
-    const series = raw && raw.result ? raw.result : (Array.isArray(raw) ? raw : await new Promise(r => {
-      // fallback: if IDB returned a request in our wrapper
-      try { raw.onsuccess = e => r(e.target.result); } catch(e) { r([]); }
-    }));
-    appState.seriesList = series || [];
-    if(appState.seriesList.length === 0){
-      emptyMsg.style.display = 'block';
-      return;
+    // IndexedDB wrapper
+    const DB = 'immReaderDB'; const STORE = 'series';
+    function openDB() {
+      return new Promise((res, rej) => {
+        const req = indexedDB.open(DB, 1);
+        req.onupgradeneeded = e => e.target.result.createObjectStore(STORE, { keyPath: 'id' });
+        req.onsuccess = () => res(req.result);
+        req.onerror = () => rej(req.error);
+      });
     }
-    emptyMsg.style.display = 'none';
-    appState.seriesList.forEach(s => {
-      const tile = document.createElement('div');
-      tile.className = 'tile';
-      tile.dataset.id = s.id;
+    async function tx(mode, fn) {
+      const db = await openDB();
+      return new Promise((res, rej) => {
+        const tx = db.transaction(STORE, mode);
+        const store = tx.objectStore(STORE);
+        const r = fn(store);
+        tx.oncomplete = () => res(r.result);
+        tx.onerror = () => rej(tx.error);
+      });
+    }
 
-      const coverWrap = document.createElement('div');
-      coverWrap.className = 'cover';
-      if(s.coverBlob){
-        const img = document.createElement('img'); img.src = bytesToUrl(s.coverBlob); img.alt = s.title;
-        coverWrap.appendChild(img);
-      } else {
-        coverWrap.innerHTML = `<svg width="72" height="96" viewBox="0 0 72 96" fill="none" xmlns="http://www.w3.org/2000/svg"><rect rx="6" width="72" height="96" fill="#0d1114"/><path d="M14 22h44v4H14z" fill="#111827"/><path d="M14 34h44v6H14z" fill="#111827"/></svg>`;
+    async function refreshLibrary() {
+      const series = await tx('readonly', s => s.getAll());
+      library.innerHTML = '';
+      if (!series.length) {
+        library.innerHTML = `<p class="text-gray-500 text-sm col-span-2">No EPUBs added yet.</p>`;
       }
-
-      const title = document.createElement('div');
-      title.className = 'title';
-      title.textContent = s.title || 'Untitled';
-
-      tile.appendChild(coverWrap);
-      tile.appendChild(title);
-      libraryEl.appendChild(tile);
-
-      // events
-      tile.addEventListener('click', (e) => openReader(s.id));
-      tile.addEventListener('contextmenu', (ev) => {
-        ev.preventDefault();
-        if(confirm(`Delete "${s.title}"? This will remove it from local storage.`)){
-          setStatus('Deleting...');
-          deleteSeries(s.id).then(()=>{ setStatus('Deleted'); renderLibrary(); });
-        }
+      series.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'bg-white/5 rounded-lg p-2 hover:bg-white/10 cursor-pointer flex flex-col gap-2';
+        div.innerHTML = `
+          <div class="aspect-[3/4] bg-black/50 rounded overflow-hidden flex items-center justify-center">
+            ${item.cover ? `<img src="${URL.createObjectURL(item.cover)}" class="object-cover w-full h-full"/>` : '<span class="text-xs text-gray-500">No Cover</span>'}
+          </div>
+          <p class="text-xs text-center truncate">${item.title}</p>`;
+        div.onclick = () => openBook(item.id);
+        div.oncontextmenu = (e) => { e.preventDefault(); if (confirm(`Delete "${item.title}"?`)) tx('readwrite', s => s.delete(item.id)).then(refreshLibrary); };
+        library.appendChild(div);
       });
+    }
 
-      // accessibility: keyboard open
-      tile.addEventListener('keydown', (k) => { if(k.key === 'Enter') openReader(s.id); });
+    addBtn.onclick = async () => {
+      if (!epubFile.files[0]) return alert('Select an EPUB first.');
+      const epubBlob = epubFile.files[0];
+      const coverBlob = coverFile.files[0] || null;
+      const entry = { id: Date.now(), title: epubBlob.name.replace(/\.epub$/i, ''), epub: epubBlob, cover: coverBlob };
+      await tx('readwrite', s => s.add(entry));
+      epubFile.value = ''; coverFile.value = '';
+      refreshLibrary();
+    };
+
+    async function openBook(id) {
+      const data = await tx('readonly', s => s.get(id));
+      if (!data) return;
+      active = data;
+      bookTitle.textContent = data.title;
+      epubUrl && URL.revokeObjectURL(epubUrl);
+      epubUrl = URL.createObjectURL(data.epub);
+      viewer.innerHTML = '';
+      book = ePub(epubUrl);
+      rendition = book.renderTo('viewer', { width: '100%', height: '100%' });
+      rendition.themes.default({ body: { color: '#f0f4f8', background: 'transparent', 'font-family': 'Georgia, serif', 'line-height': '1.6' } });
+      rendition.display();
+    }
+
+    backBtn.onclick = () => { viewer.innerHTML = ''; bookTitle.textContent = 'No book open'; };
+    downloadBtn.onclick = () => { if (!active) return; const a = document.createElement('a'); a.href = URL.createObjectURL(active.epub); a.download = active.title + '.epub'; a.click(); };
+    prevBtn.onclick = () => rendition?.prev();
+    nextBtn.onclick = () => rendition?.next();
+
+    // Floating orb
+    document.addEventListener('mousemove', e => {
+      orb.style.left = e.clientX + 'px';
+      orb.style.top = e.clientY + 'px';
     });
-  }
+    document.addEventListener('mouseover', e => { if (e.target.closest('button,div,aside')) orb.classList.add('hover'); });
+    document.addEventListener('mouseout', e => { if (!e.relatedTarget || !e.relatedTarget.closest('button,div,aside')) orb.classList.remove('hover'); });
 
-  /* -----------------------------
-     Add series flow
-     ----------------------------- */
-  addBtn.addEventListener('click', async () => {
-    const epubFile = epubInput.files[0];
-    if(!epubFile){ alert('Please select an EPUB file.'); return; }
-    const coverFile = coverInput.files[0];
+    // Parallax header motion
+    const readerHeader = document.getElementById('readerHeader');
+    viewer.addEventListener('scroll', () => {
+      const y = viewer.scrollTop;
+      readerHeader.style.transform = `translateY(${Math.min(y * 0.1, 20)}px)`;
+    });
 
-    try {
-      setStatus('Caching EPUB...');
-      const epubBlob = epubFile.slice(0, epubFile.size, epubFile.type);
-      let coverBlob = null;
-      if(coverFile) coverBlob = coverFile.slice(0, coverFile.size, coverFile.type);
-
-      const titleGuess = (epubFile.name || 'Untitled').replace(/\.epub$/i,'');
-      await addSeries({ title: titleGuess, epubBlob, coverBlob, lastCfi: null });
-      setStatus('Added');
-      epubInput.value = '';
-      coverInput.value = '';
-      renderLibrary();
-    } catch (err) {
-      console.error(err);
-      setStatus('Error');
-      alert('Could not add EPUB — ' + (err.message || err));
-    }
-  });
-
-  /* -----------------------------
-     Reader open / close / render
-     ----------------------------- */
-  backBtn.addEventListener('click', () => {
-    closeReader();
-  });
-
-  async function openReader(id){
-    const s = appState.seriesList.find(x => x.id === id);
-    if(!s){
-      // fetch fresh in case list was stale
-      const all = await getAllSeries();
-      const arr = all && all.result ? all.result : (Array.isArray(all) ? all : []);
-      appState.seriesList = arr;
-      appState.active = arr.find(x => x.id === id);
-    } else appState.active = s;
-
-    if(!appState.active){
-      alert('Series not found.');
-      return;
-    }
-
-    currentTitleEl.textContent = appState.active.title || 'Untitled';
-    // manage object URLs
-    if(appState.epubUrl){ URL.revokeObjectURL(appState.epubUrl); appState.epubUrl = null; }
-    if(appState.coverUrl){ URL.revokeObjectURL(appState.coverUrl); appState.coverUrl = null; }
-
-    appState.epubUrl = bytesToUrl(appState.active.epubBlob);
-    if(appState.active.coverBlob) appState.coverUrl = bytesToUrl(appState.active.coverBlob);
-
-    // initialize epub.js
-    try {
-      setStatus('Loading book...');
-      // clean existing rendition/book
-      if(appState.rendition){ try { appState.rendition.destroy(); } catch(e){} appState.rendition = null; }
-      if(appState.book){ try { appState.book.destroy(); } catch(e){} appState.book = null; }
-
-      const book = ePub(appState.epubUrl, { openAs: 'epub' });
-      appState.book = book;
-
-      const rendition = book.renderTo(viewerEl, { width: '100%', height: '100%', spread: 'auto', ignoreClass: 'no-render' });
-      appState.rendition = rendition;
-
-      // theme: immersive dark + serif
-      rendition.themes.register('immser', {
-        'body': {
-          'color': '#e6eef6',
-          'background': 'transparent',
-          'font-family': 'Georgia, "Times New Roman", serif',
-          'line-height': '1.7',
-          'padding': '0.6rem 0.8rem',
-          'margin': '0 auto',
-          'max-width': '50em',
-          'font-size': '20px'
-        },
-        'img': { 'max-width': '100%' },
-        '::selection': { 'background': 'rgba(139,233,253,0.18)' }
-      });
-      rendition.themes.select('immser');
-
-      // navigation events
-      rendition.on('relocated', function(location){
-        try {
-          const cfi = location.start.cfi;
-          updateSeries(appState.active.id, { lastCfi: cfi });
-          progressHint.style.display = 'inline-block';
-          progressHint.textContent = `CFI: ${cfi.slice(0,24)}…`;
-        } catch(e){ console.warn(e); }
-      });
-
-      // display stored location or first
-      const start = appState.active.lastCfi || undefined;
-      await book.ready; // ensure ready
-      await rendition.display(start);
-
-      setStatus('Ready');
-    } catch (err) {
-      console.error(err);
-      alert('Failed to render EPUB: ' + err.message);
-      setStatus('Error');
-    }
-  }
-
-  function closeReader(){
-    // teardown
-    if(appState.rendition){ try{ appState.rendition.destroy(); } catch(e){} appState.rendition = null; }
-    if(appState.book){ try{ appState.book.destroy(); } catch(e){} appState.book = null; }
-    if(appState.epubUrl){ URL.revokeObjectURL(appState.epubUrl); appState.epubUrl = null; }
-    if(appState.coverUrl){ URL.revokeObjectURL(appState.coverUrl); appState.coverUrl = null; }
-    currentTitleEl.textContent = 'Select a book';
-    progressHint.style.display = 'none';
-    setStatus('Ready');
-  }
-
-  // nav
-  prevBtn.addEventListener('click', () => {
-    try { appState.rendition && appState.rendition.prev(); } catch(e){ console.warn(e); }
-  });
-  nextBtn.addEventListener('click', () => {
-    try { appState.rendition && appState.rendition.next(); } catch(e){ console.warn(e); }
-  });
-
-  // download
-  downloadBtn.addEventListener('click', () => {
-    if(!appState.active) return alert('No active book to download.');
-    const blob = appState.active.epubBlob;
-    const a = document.createElement('a');
-    a.href = bytesToUrl(blob);
-    a.download = (appState.active.title || 'book') + '.epub';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(()=> { if(appState.epubUrl) URL.revokeObjectURL(appState.epubUrl); }, 2000);
-  });
-
-  /* -----------------------------
-     Cursor orb interactions
-     ----------------------------- */
-  document.addEventListener('mousemove', (e) => {
-    orb.style.left = e.clientX + 'px';
-    orb.style.top = e.clientY + 'px';
-  });
-
-  // enlarge orb on hover for interactive elements
-  const interactiveSelector = 'button, .tile, a, input, label';
-  document.addEventListener('mouseover', (e) => {
-    if(e.target.closest(interactiveSelector)){
-      orb.style.transform = 'translate(-50%,-50%) scale(1.8)';
-      orb.style.width = '42px';
-      orb.style.height = '42px';
-      orb.style.boxShadow = '0 12px 38px rgba(139,233,253,0.14)';
-    }
-  });
-  document.addEventListener('mouseout', (e) => {
-    if(!e.relatedTarget || !e.relatedTarget.closest(interactiveSelector)){
-      orb.style.transform = 'translate(-50%,-50%) scale(1)';
-      orb.style.width = '24px';
-      orb.style.height = '24px';
-      orb.style.boxShadow = '';
-    }
-  });
-
-  /* -----------------------------
-     Startup
-     ----------------------------- */
-  (async function init(){
-    try {
-      setStatus('Initializing...');
-      await renderLibrary();
-      setStatus('Ready', 800);
-    } catch (e) {
-      console.error(e);
-      setStatus('Init error');
-    }
-  })();
-
+    refreshLibrary();
   </script>
 </body>
 </html>
