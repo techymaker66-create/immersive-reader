@@ -1,178 +1,435 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Immersive EPUB Reader</title>
-<link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
-<style>
-body {
-  margin: 0;
-  background: #0e0e0f;
-  color: #f5f5dc;
-  font-family: 'Merriweather', serif;
-  overflow: hidden;
-}
-#container {
-  display: flex;
-  height: 100vh;
-}
-#sidebar {
-  width: 300px;
-  background: #121214;
-  border-right: 1px solid rgba(255,255,255,0.1);
-  padding: 20px;
-  overflow-y: auto;
-}
-#sidebar h2 {
-  margin-top: 0;
-  font-size: 20px;
-  text-align: center;
-}
-#addFile {
-  width: 100%;
-  background: transparent;
-  border: 1px solid #f5f5dc;
-  color: #f5f5dc;
-  border-radius: 8px;
-  padding: 10px;
-  cursor: pointer;
-}
-#bookList {
-  margin-top: 20px;
-}
-.bookItem {
-  background: #1b1b1d;
-  margin-bottom: 10px;
-  padding: 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.bookItem:hover {
-  background: #2a2a2d;
-}
-#reader {
-  flex: 1;
-  position: relative;
-  background: #0d0d0e;
-  display: flex;
-  flex-direction: column;
-}
-#viewer {
-  flex: 1;
-  margin: 40px;
-  border-radius: 12px;
-  box-shadow: 0 0 30px rgba(0,0,0,0.6);
-  overflow: hidden;
-}
-#viewer iframe {
-  width: 100%;
-  height: 100%;
-}
-.nav {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px 40px;
-  background: rgba(0,0,0,0.4);
-}
-.nav button {
-  background: transparent;
-  border: 1px solid #f5f5dc;
-  color: #f5f5dc;
-  padding: 10px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.nav button:hover {
-  background: #f5f5dc;
-  color: #0e0e0f;
-}
-</style>
-</head>
-<body>
-<div id="container">
-  <div id="sidebar">
-    <h2>Your Library</h2>
-    <input type="file" id="fileInput" accept=".epub" style="display:none">
-    <button id="addFile">+ Add EPUB</button>
-    <div id="bookList"></div>
-  </div>
-  <div id="reader">
-    <div id="viewer"></div>
-    <div class="nav">
-      <button id="prevBtn">← Prev</button>
-      <button id="nextBtn">Next →</button>
-    </div>
-  </div>
-</div>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Comick-style Immersive Reader</title>
 
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+
+<!-- Load JSZip first, then epub.js (stable jsDelivr) -->
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
 
+<style>
+:root{--bg:#0d0d0f;--muted:#9b9b9b;--accent:#f5f5dc}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:'Playfair Display',serif;background:var(--bg);color:var(--accent);}
+
+/* Layout (kept your look) */
+#app{display:flex;min-height:100vh}
+#sidebar{width:320px;padding:28px;background:linear-gradient(180deg,#0b0b0d,#0f0f12);border-right:1px solid rgba(255,255,255,0.03);display:flex;flex-direction:column}
+#main{flex:1;padding:28px;display:flex;flex-direction:column;align-items:center}
+h1{margin:0 0 12px 0;font-size:20px;letter-spacing:1px}
+
+.controls{margin:12px 0 22px 0;display:flex;flex-direction:column;gap:10px}
+.add-btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 12px;border-radius:8px;color:var(--accent);cursor:pointer;transition:all .18s ease;text-align:left}
+.add-btn:hover{border-color:var(--accent)}
+#statusMsg{color:var(--muted);font-size:13px;margin-top:10px}
+
+.tiles{display:flex;flex-wrap:wrap;gap:18px}
+.tile{width:160px;height:240px;border-radius:10px;overflow:hidden;position:relative;background:#18181a;box-shadow:0 6px 18px rgba(0,0,0,0.6);cursor:pointer;transition:transform .25s,box-shadow .25s}
+.tile img{width:100%;height:100%;object-fit:cover;display:block}
+.tile:hover{transform:translateY(-6px) scale(1.02);box-shadow:0 12px 30px rgba(0,0,0,0.7)}
+.tile .meta{position:absolute;left:0;right:0;bottom:0;padding:10px;background:linear-gradient(180deg,transparent, rgba(0,0,0,0.6));display:flex;justify-content:space-between;align-items:center}
+.tile .meta .title{font-size:13px}
+.tile .meta .resume{font-size:12px;color:var(--muted)}
+
+/* Reader */
+#readerWrap{display:none;flex-direction:column;align-items:center;position:relative;width:100%;height:100vh}
+#readerHeader{width:100%;display:flex;justify-content:space-between;align-items:center;padding:22px 40px;position:fixed;top:0;left:0;z-index:50;background:linear-gradient(180deg, rgba(10,10,10,0.9), transparent);backdrop-filter: blur(2px)}
+#readerHeader h2{margin:0;font-size:18px}
+#viewerContainer{width:820px;max-width:92%;margin-top:98px;margin-bottom:80px;position:relative}
+#viewer{background:rgba(0,0,0,0.35);padding:36px 48px;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,0.7);max-height:74vh;overflow:auto}
+#viewer p{opacity:0;margin:0 0 1.15em 0;line-height:1.8;font-size:18px}
+#viewer p.visible{opacity:1;transition:opacity .8s ease}
+#viewer .dropcap{float:left;font-size:64px;line-height:56px;padding-right:12px;padding-top:8px;color:var(--accent)}
+
+#progressBar{position:fixed;right:20px;top:20px;width:10px;height:60vh;background:rgba(255,255,255,0.03);border-radius:20px;overflow:hidden}
+#progressFill{width:100%;height:0;background:linear-gradient(180deg,var(--accent), #d4d4b8)}
+
+.nav{position:fixed;left:0;right:0;bottom:24px;display:flex;justify-content:space-between;padding:0 40px;pointer-events:none}
+.nav button{pointer-events:auto;background:linear-gradient(145deg,#2a2a2a,#171717);border-radius:28px;padding:14px 22px;border:none;color:var(--accent);font-size:16px;box-shadow:0 8px 22px rgba(0,0,0,0.6);cursor:pointer;transition:transform .18s,box-shadow .18s}
+.nav button:hover{transform:scale(1.06);box-shadow:0 14px 34px rgba(0,0,0,0.75)}
+.nav button:active{transform:scale(.96)}
+
+#fog{position:fixed;inset:0;background:radial-gradient(circle at 50% 40%, rgba(255,255,255,0.02), rgba(255,255,255,0.01) 10%, rgba(0,0,0,0.85) 40%);pointer-events:none;opacity:0;transition:opacity .6s;z-index:90}
+#cursorGlow{position:fixed;width:22px;height:22px;border-radius:50%;pointer-events:none;mix-blend-mode:screen;box-shadow:0 0 32px 10px rgba(245,245,220,0.22);transform:translate(-50%,-50%);z-index:200;transition:all .18s ease}
+
+@media (max-width:900px){#sidebar{display:none}#viewer{padding:22px}}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <h1>Comick Library</h1>
+
+    <div class="controls">
+      <label class="add-btn">Select EPUB
+        <input id="epubInput" type="file" accept=".epub">
+      </label>
+
+      <label class="add-btn">Select Cover (optional)
+        <input id="coverInput" type="file" accept="image/*">
+      </label>
+
+      <button id="addSeriesBtn" class="add-btn">Add Series</button>
+    </div>
+
+    <div id="statusMsg">Ready</div>
+  </aside>
+
+  <main id="main">
+    <div id="homepageView" style="width:100%;max-width:1200px">
+      <div style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+        <h2 style="margin:0">Your Library</h2>
+        <div style="color:var(--muted);font-size:13px">Click to open • Right-click to delete • Resumes automatically</div>
+      </div>
+
+      <div class="tiles" id="tiles"></div>
+    </div>
+
+    <div id="readerWrap">
+      <div id="readerHeader">
+        <h2 id="seriesTitle">Series</h2>
+        <div>
+          <button id="gotoHome" class="add-btn">Library</button>
+          <button id="downloadEpub" class="add-btn">Download EPUB</button>
+        </div>
+      </div>
+
+      <div id="viewerContainer"><div id="viewer" tabindex="0"></div></div>
+
+      <div id="progressBar"><div id="progressFill"></div></div>
+
+      <div class="nav">
+        <button id="prevBtn">⟵ Prev</button>
+        <button id="nextBtn">Next ⟶</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="fog"></div>
+<div id="cursorGlow"></div>
+
 <script>
-let book, rendition;
+/* ---------- IndexedDB helpers ---------- */
+const DB_NAME = 'comickDB_v2';
+const STORE_NAME = 'seriesStore';
+let db = null;
+
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = e => {
+      db = e.target.result;
+      if(!db.objectStoreNames.contains(STORE_NAME)){
+        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = e => { db = e.target.result; resolve(db); };
+    req.onerror = e => reject(e);
+  });
+}
+
+function getAllSeries(){
+  return new Promise(async (res, rej) => {
+    if(!db) await openDB();
+    const tx = db.transaction(STORE_NAME,'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.getAll();
+    req.onsuccess = ()=> res(req.result);
+    req.onerror = ()=> rej(req.error);
+  });
+}
+
+function saveSeries(obj){
+  return new Promise(async (res, rej) => {
+    if(!db) await openDB();
+    const tx = db.transaction(STORE_NAME,'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const r = store.put(obj);
+    r.onsuccess = ()=> res();
+    r.onerror = ()=> rej(r.error);
+  });
+}
+
+function getSeriesById(id){
+  return new Promise(async (res, rej) => {
+    if(!db) await openDB();
+    const tx = db.transaction(STORE_NAME,'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const r = store.get(id);
+    r.onsuccess = ()=> res(r.result);
+    r.onerror = ()=> rej(r.error);
+  });
+}
+
+function deleteSeriesById(id){
+  return new Promise(async (res, rej) => {
+    if(!db) await openDB();
+    const tx = db.transaction(STORE_NAME,'readwrite');
+    const r = tx.objectStore(STORE_NAME).delete(id);
+    r.onsuccess = ()=> res();
+    r.onerror = ()=> rej(r.error);
+  });
+}
+
+/* ---------- DOM refs ---------- */
+const tilesEl = document.getElementById('tiles');
+const epubInput = document.getElementById('epubInput');
+const coverInput = document.getElementById('coverInput');
+const addSeriesBtn = document.getElementById('addSeriesBtn');
+const statusMsg = document.getElementById('statusMsg');
+const homepageView = document.getElementById('homepageView');
+const readerWrap = document.getElementById('readerWrap');
+const seriesTitle = document.getElementById('seriesTitle');
 const viewer = document.getElementById('viewer');
-const bookList = document.getElementById('bookList');
+const progressFill = document.getElementById('progressFill');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const gotoHome = document.getElementById('gotoHome');
+const downloadEpubBtn = document.getElementById('downloadEpub');
+const fog = document.getElementById('fog');
 
-document.getElementById('addFile').onclick = () => document.getElementById('fileInput').click();
+/* ---------- Utilities ---------- */
+function showStatus(txt){ statusMsg.textContent = txt; }
+function placeholderCover(){
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='800' height='1200'><rect width='100%' height='100%' fill='#111'/><text x='50%' y='50%' font-size='40' fill='#e6e0c8' text-anchor='middle' font-family='Playfair Display'>Untitled</text></svg>`);
+}
+function dataURLFromFile(file){
+  return new Promise((res, rej)=>{
+    const r = new FileReader();
+    r.onload = ()=> res(r.result);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+function downloadBlob(blob, filename){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
 
-document.getElementById('fileInput').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const buffer = await file.arrayBuffer();
-  const title = file.name.replace(/\.epub$/i, '');
-  const id = Date.now();
-  const item = { id, title, data: buffer };
-  localStorage.setItem('book-' + id, JSON.stringify({ title }));
-  const blob = new Blob([buffer]);
-  localStorage.setItem('bookBlob-' + id, URL.createObjectURL(blob));
+/* ---------- Rendering library ---------- */
+async function renderLibrary(){
+  tilesEl.innerHTML = '';
+  showStatus('Loading library...');
+  let list = [];
+  try { list = await getAllSeries(); } catch(e){ console.error(e); }
+  // sort by title
+  list.sort((a,b)=> (a.title||'').localeCompare(b.title||''));
+  for(const s of list){
+    const tile = document.createElement('div');
+    tile.className = 'tile';
+    const img = document.createElement('img');
+    img.src = s.cover || placeholderCover();
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    const t = document.createElement('span'); t.className='title'; t.textContent = s.title || 'Untitled';
+    const r = document.createElement('span'); r.className='resume'; r.textContent = s.lastCfi ? 'Resume' : '';
+    meta.appendChild(t); meta.appendChild(r);
+
+    // right-click to delete
+    tile.addEventListener('contextmenu', (ev)=>{
+      ev.preventDefault();
+      if(confirm(`Delete series "${s.title}"? This will remove stored EPUB and progress.`)){
+        deleteSeriesById(s.id).then(renderLibrary);
+      }
+    });
+
+    // click to open
+    tile.addEventListener('click', ()=> openSeries(s.id));
+
+    tile.appendChild(img);
+    tile.appendChild(meta);
+    tilesEl.appendChild(tile);
+  }
+  showStatus('Ready');
+}
+
+/* ---------- Add series ---------- */
+addSeriesBtn.addEventListener('click', async ()=>{
+  const epubFile = epubInput.files[0];
+  const coverFile = coverInput.files[0];
+  if(!epubFile){
+    alert('Please select an EPUB file.');
+    return;
+  }
+  showStatus('Caching EPUB...');
+  try{
+    // store EPUB as Blob; cover as dataURL (persisted)
+    const epubBlob = epubFile.slice(0, epubFile.size, epubFile.type || 'application/epub+zip');
+    const coverData = coverFile ? await dataURLFromFile(coverFile) : null;
+    const id = 'series_' + Date.now();
+    const title = epubFile.name.replace(/\.epub$/i,'');
+    const obj = { id, title, epub: epubBlob, cover: coverData, lastCfi: '' };
+    await saveSeries(obj);
+    // reset input fields so user can add more
+    epubInput.value = '';
+    coverInput.value = '';
+    await renderLibrary();
+    showStatus('Ready');
+  }catch(e){
+    console.error(e);
+    alert('Failed to add series. See console for details.');
+    showStatus('Ready');
+  }
+});
+
+/* ---------- EPUB.js Reader integration ---------- */
+let currentSeriesId = null;
+let book = null;
+let rendition = null;
+
+function resetReader(){
+  try{ if(rendition && rendition.destroy) rendition.destroy(); }catch(e){}
+  rendition = null; book = null;
+  viewer.innerHTML = '';
+  progressFill.style.height = '0%';
+  // revoke any blob urls created elsewhere (not used here)
+}
+
+async function openSeries(id){
+  showStatus('Loading book...');
+  try{
+    const s = await getSeriesById(id);
+    if(!s || !s.epub){ alert('Series or EPUB missing.'); showStatus('Ready'); return; }
+    resetReader();
+    currentSeriesId = id;
+    seriesTitle.textContent = s.title || 'Series';
+    homepageView.style.display = 'none';
+    readerWrap.style.display = 'flex';
+    viewer.innerHTML = 'Loading book...';
+
+    // Read stored Blob as ArrayBuffer and pass to epub.js (this avoids container.xml 404s)
+    const buffer = await (s.epub instanceof Blob ? s.epub.arrayBuffer() : Promise.resolve(s.epub));
+    book = ePub(buffer);
+
+    // render into viewer (scrolled flow for smooth reading)
+    rendition = book.renderTo(viewer, { width:'100%', height:'100%', flow:'scrolled' });
+
+    // theme to match dark UI
+    rendition.themes.default({
+      'body': { color: 'var(--accent)', background: 'transparent', 'font-family':'Playfair Display, serif', 'line-height':'1.8' },
+      'p': { 'font-size':'18px' }
+    });
+
+    await book.ready;
+
+    // generate locations (if needed) to support percentage/resume
+    try{ if(!book.locations || !book.locations.length) await book.locations.generate(1200); }catch(e){ console.warn('locations.generate failed', e); }
+
+    const startCfi = s.lastCfi && s.lastCfi.length ? s.lastCfi : undefined;
+    await rendition.display(startCfi);
+
+    // reveal paragraphs in view
+    revealVisibleParagraphs();
+    viewer.addEventListener('scroll', throttle(revealVisibleParagraphs, 120));
+
+    // save progress on relocation
+    rendition.on('relocated', (loc)=>{
+      try{
+        const cfi = loc && loc.start && loc.start.cfi;
+        let pct = 0;
+        try{ if(book.locations && book.locations.length) pct = Math.round(book.locations.percentageFromCfi(cfi)*100);
+              else if(loc.start && loc.start.percentage) pct = Math.round(loc.start.percentage*100);
+        }catch(e){}
+        progressFill.style.height = pct + '%';
+        // save lastCfi
+        (async ()=>{
+          const obj = await getSeriesById(currentSeriesId);
+          if(obj){ obj.lastCfi = cfi; await saveSeries(obj); }
+        })();
+      }catch(e){ console.warn(e); }
+    });
+
+    showStatus('Ready');
+  }catch(err){
+    console.error('openSeries error', err);
+    alert('Failed to open EPUB. See console for details.');
+    showStatus('Ready');
+  }
+}
+
+/* Reveal visible paragraphs (fade-in) */
+function revealVisibleParagraphs(){
+  const ps = viewer.querySelectorAll('p');
+  if(ps.length === 0) return;
+  const rect = viewer.getBoundingClientRect();
+  for(const p of ps){
+    const r = p.getBoundingClientRect();
+    if(r.top < rect.bottom - 40 && r.bottom > rect.top + 20){
+      p.classList.add('visible');
+    }
+  }
+}
+
+/* small throttle util */
+function throttle(fn, wait){
+  let t = null;
+  return function(...a){
+    if(t) return;
+    t = setTimeout(()=>{ t = null; fn(...a); }, wait);
+  };
+}
+
+/* ---------- Navigation & controls ---------- */
+nextBtn.addEventListener('click', ()=>{ if(rendition) playFog(()=>rendition.next()); });
+prevBtn.addEventListener('click', ()=>{ if(rendition) playFog(()=>rendition.prev()); });
+
+function playFog(action){
+  fog.style.opacity = 1;
+  setTimeout(()=>{
+    try{ action(); } catch(e){ console.warn(e); }
+    setTimeout(()=> fog.style.opacity = 0, 380);
+  }, 220);
+}
+
+// keyboard controls
+document.addEventListener('keydown', (e)=>{
+  const tag = document.activeElement && document.activeElement.tagName.toLowerCase();
+  if(tag === 'input' || tag === 'textarea') return;
+  if(!rendition) return;
+
+  if(e.code === 'ArrowRight'){ e.preventDefault(); playFog(()=>rendition.next()); }
+  else if(e.code === 'ArrowLeft'){ e.preventDefault(); playFog(()=>rendition.prev()); }
+  else if(e.code === 'Space' || e.code === 'ArrowDown'){ e.preventDefault(); viewer.scrollBy({ top: 240, behavior: 'smooth' }); }
+  else if(e.code === 'ShiftRight' || e.code === 'ArrowUp'){ e.preventDefault(); viewer.scrollBy({ top: -240, behavior: 'smooth' }); }
+});
+
+// download current EPUB
+downloadEpubBtn.addEventListener('click', async ()=>{
+  if(!currentSeriesId){ alert('No book open'); return; }
+  const s = await getSeriesById(currentSeriesId);
+  if(!s || !s.epub){ alert('EPUB missing'); return; }
+  const blob = s.epub instanceof Blob ? s.epub : new Blob([s.epub], {type:'application/epub+zip'});
+  downloadBlob(blob, (s.title || 'book') + '.epub');
+});
+
+// go back to library
+gotoHome.addEventListener('click', ()=>{
+  resetReader();
+  readerWrap.style.display = 'none';
+  homepageView.style.display = 'block';
   renderLibrary();
 });
 
-function renderLibrary() {
-  bookList.innerHTML = '';
-  Object.keys(localStorage)
-    .filter(k => k.startsWith('book-') && !k.includes('Blob'))
-    .forEach(key => {
-      const { title } = JSON.parse(localStorage.getItem(key));
-      const id = key.split('-')[1];
-      const div = document.createElement('div');
-      div.className = 'bookItem';
-      div.textContent = title;
-      div.onclick = () => openBook(id);
-      bookList.appendChild(div);
-    });
-}
-
-async function openBook(id) {
-  const blobUrl = localStorage.getItem('bookBlob-' + id);
-  if (!blobUrl) return alert('Book data missing.');
-  viewer.innerHTML = '';
-  book = ePub(blobUrl);
-  rendition = book.renderTo('viewer', {
-    width: '100%',
-    height: '100%',
-    flow: 'paginated',
-  });
-  rendition.themes.default({
-    body: {
-      background: '#0e0e0f',
-      color: '#f5f5dc',
-      'line-height': '1.8',
-      'font-family': 'Merriweather, serif',
-      'font-size': '18px'
-    }
-  });
-  await rendition.display();
-}
-
-document.getElementById('nextBtn').onclick = () => rendition && rendition.next();
-document.getElementById('prevBtn').onclick = () => rendition && rendition.prev();
-
-renderLibrary();
+/* ---------- Init ---------- */
+(async function init(){
+  try{
+    await openDB();
+    await renderLibrary();
+    showStatus('Ready');
+  }catch(e){
+    console.error('Init error', e);
+    showStatus('Error');
+  }
+})();
 </script>
 </body>
 </html>
-
