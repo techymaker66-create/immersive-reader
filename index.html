@@ -1,156 +1,117 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Comick Reader — Polished</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Comick — Fix: Reading Mode + No Blur</title>
 
-<!-- Fonts -->
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Merriweather:wght@300;400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-
-<!-- Dependency -->
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 
 <style>
 :root{
-  --bg-1:#0d0d0f;
-  --panel:#0f0f11;
-  --muted:#9a9a9a;
-  --accent:#efe7c9;
-  --glass:rgba(255,255,255,0.03);
-  --card-shadow: 0 26px 70px rgba(0,0,0,0.65);
-  --btn-shadow: 0 10px 30px rgba(0,0,0,0.6);
-  --radius:14px;
-  --measure:65ch;
-  --ui-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  --heading-font: "Playfair Display", serif;
-  --body-font: "Merriweather", serif;
+  --bg:#0d0d0f; --panel:#111113; --muted:#9b9b9b; --accent:#efe7c9;
+  --measure:64ch; --header-h:72px;
 }
+/* base */
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg-1),#070708);color:var(--accent);-webkit-font-smoothing:antialiased;font-family:var(--ui-font);}
+html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;background:var(--bg);color:var(--accent);-webkit-font-smoothing:antialiased}
 
 /* layout */
-#app{display:flex;min-height:100vh}
-#sidebar{
-  width:340px;padding:28px;background:linear-gradient(180deg,#080808,var(--panel));border-right:1px solid rgba(255,255,255,0.03);
-  display:flex;flex-direction:column;gap:12px;transition:transform .36s ease,opacity .28s ease;
-}
-#main{flex:1;padding:28px;display:flex;flex-direction:column;align-items:center;position:relative;overflow:hidden}
+#app{display:flex;min-height:100vh;transition:all .18s}
+#sidebar{width:340px;padding:22px;background:linear-gradient(180deg,#080808,var(--panel));border-right:1px solid rgba(255,255,255,0.03);display:flex;flex-direction:column;gap:12px;transition:transform .28s,opacity .28s}
+#main{flex:1;padding:22px;display:flex;flex-direction:column;align-items:center;position:relative;overflow:hidden}
 
 /* header / brand */
-h1{margin:0;font-family:var(--heading-font);font-size:22px;letter-spacing:1px;color:var(--accent)}
+h1{margin:0;font-family:'Playfair Display',serif;font-size:22px;letter-spacing:1px}
 
 /* controls */
 .controls{display:flex;flex-direction:column;gap:10px}
-.add-btn{
-  display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);
-  border:1px solid rgba(255,255,255,0.04);color:var(--accent);cursor:pointer;transition:transform .14s ease,box-shadow .14s;
-  box-shadow: var(--btn-shadow);font-family:var(--ui-font);font-weight:600;
-}
-.add-btn:hover{transform:translateY(-6px);box-shadow:0 22px 48px rgba(0,0,0,0.7)}
-.add-btn:active{transform:translateY(-2px) scale(.995)}
+.add-btn{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border:1px solid rgba(255,255,255,0.04);color:var(--accent);cursor:pointer;transition:transform .14s ease, box-shadow .14s;box-shadow:0 10px 28px rgba(0,0,0,0.55);font-weight:600}
+.add-btn:hover{transform:translateY(-4px);box-shadow:0 16px 42px rgba(0,0,0,0.65)}
+.add-btn:active{transform:translateY(-1px) scale(.995}
 .add-btn input{display:none}
-#statusMsg{color:var(--muted);font-size:13px;margin-top:6px}
+#statusMsg{color:var(--muted);font-size:13px}
 
-/* tiles grid */
-.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:18px;margin-top:8px}
-.tile{
-  border-radius:12px;overflow:hidden;position:relative;background:#0f0f10;cursor:pointer;transition:transform .22s,box-shadow .22s;box-shadow:0 10px 32px rgba(0,0,0,0.55);
-  display:block;min-height:220px;
-}
-.tile:hover{transform:translateY(-8px) scale(1.02);box-shadow:0 30px 80px rgba(0,0,0,0.7)}
+/* tiles */
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;margin-top:12px}
+.tile{border-radius:12px;overflow:hidden;position:relative;background:#0f0f10;cursor:pointer;transition:transform .18s,box-shadow .18s;box-shadow:0 10px 28px rgba(0,0,0,0.55);min-height:220px}
+.tile:hover{transform:translateY(-8px) scale(1.02);box-shadow:0 28px 68px rgba(0,0,0,0.72)}
 .tile img{width:100%;height:100%;object-fit:cover;display:block;aspect-ratio:2/3}
-.tile .meta{
-  position:absolute;left:0;right:0;bottom:0;padding:12px;background:linear-gradient(180deg,transparent,rgba(0,0,0,0.72));
-  display:flex;justify-content:space-between;align-items:center;gap:8px;
-}
-.tile .title{font-size:13px;font-family:var(--body-font)}
+.tile .meta{position:absolute;left:0;right:0;bottom:0;padding:10px;background:linear-gradient(180deg,transparent,rgba(0,0,0,0.72));display:flex;justify-content:space-between;align-items:center}
+.tile .title{font-size:13px}
 .tile .resume{font-size:12px;color:var(--muted)}
 
-/* reader */
+/* READER */
 #readerWrap{display:none;position:relative;width:100%;height:100vh;overflow:hidden}
-#readerHeader{width:100%;display:flex;justify-content:space-between;align-items:center;padding:18px 28px;position:fixed;top:0;left:0;z-index:140;background:linear-gradient(180deg, rgba(8,8,8,0.95), transparent);backdrop-filter: blur(6px)}
-#readerHeader h2{margin:0;font-family:var(--heading-font);font-size:18px;color:var(--accent)}
-#viewerContainer{width:100%;max-width:1200px;margin-top:80px;margin-bottom:86px;position:relative}
-#viewer{
-  background:linear-gradient(180deg, rgba(255,255,255,0.006), rgba(255,255,255,0.003));
-  padding:40px;border-radius:16px;box-shadow:var(--card-shadow);max-height:78vh;overflow:auto;scroll-behavior:smooth;
-  -webkit-overflow-scrolling:touch;
-}
+#readerHeader{height:var(--header-h);width:100%;display:flex;align-items:center;justify-content:space-between;padding:12px 28px;position:fixed;top:0;left:0;z-index:120;background:rgba(8,8,8,0.6);backdrop-filter:none}
+#readerHeader h2{margin:0;font-family:'Playfair Display',serif;font-size:18px}
+#viewerContainer{width:100%;max-width:1200px;margin-top:calc(var(--header-h) + 18px);margin-bottom:84px;position:relative}
+#viewer{background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));padding:28px;border-radius:14px;box-shadow:0 20px 70px rgba(0,0,0,0.6);max-height:76vh;overflow:auto;scroll-behavior:smooth}
 
 /* chapter card */
-.chapter{margin:32px 0;padding:36px;border-radius:14px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.004));box-shadow:0 10px 40px rgba(0,0,0,0.55);opacity:0;transform:translateY(16px)}
-.chapter.visible{opacity:1;transform:translateY(0);transition:all .5s cubic-bezier(.2,.9,.2,1)}
-.chapter-title{font-family:var(--heading-font);font-size:20px;margin:0 0 14px 0}
-.chapter-body{font-family:var(--body-font);max-width:var(--measure);margin:0 auto;color:var(--accent);font-size:18px;line-height:1.85;text-align:justify;hyphens:auto;padding-right:6px}
+.chapter{margin:24px 0;padding:28px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.004));box-shadow:0 10px 40px rgba(0,0,0,0.55);opacity:0;transform:translateY(12px)}
+.chapter.visible{opacity:1;transform:translateY(0);transition:all .42s cubic-bezier(.2,.9,.2,1)}
+.chapter-title{font-family:'Playfair Display',serif;font-size:20px;margin:0 0 12px 0}
+.chapter-body{max-width:var(--measure);margin:0 auto;color:var(--accent);font-size:18px;line-height:1.82;text-align:justify;hyphens:auto;padding-right:6px}
 
-/* dropcap refined */
-.chapter-body p:first-of-type::first-letter{
-  float:left;font-size:62px;line-height:56px;padding-right:12px;padding-top:6px;color:var(--accent);font-family:var(--heading-font);font-weight:700;
-}
-.chapter-body p{opacity:0;transition:opacity .9s ease;margin:0 0 1.05em}
+/* dropcap */
+.chapter-body p:first-of-type::first-letter{float:left;font-size:62px;line-height:56px;padding-right:12px;padding-top:6px;color:var(--accent);font-family:'Playfair Display',serif;font-weight:700}
+.chapter-body p{opacity:1;transition:opacity .45s;margin:0 0 1.05em}
 
-/* placeholder (lazy) */
-.chapter-placeholder{padding:18px;border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(255,255,255,0.004));margin:18px 0;text-align:center;color:var(--muted)}
+/* placeholders */
+.chapter-placeholder{padding:16px;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(255,255,255,0.004));margin:12px 0;text-align:center;color:var(--muted)}
 
-/* progress slider (top) */
-#progressTop{position:fixed;left:50%;transform:translateX(-50%);top:10px;z-index:200;display:flex;align-items:center;gap:10px;background:rgba(0,0,0,0.28);padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.03)}
-#progressTop input[type="range"]{width:320px;background:transparent}
-
-/* side controls & nav */
-#progressBar{position:fixed;right:20px;top:20px;width:10px;height:56vh;background:rgba(255,255,255,0.03);border-radius:20px;overflow:hidden;z-index:95}
+/* progress & nav */
+#progressBar{position:fixed;right:18px;top:18px;width:10px;height:56vh;background:rgba(255,255,255,0.03);border-radius:20px;overflow:hidden;z-index:110}
 #progressFill{width:100%;height:0;background:linear-gradient(180deg,var(--accent), #d4d4b8)}
-.nav{position:fixed;left:0;right:0;bottom:20px;display:flex;justify-content:space-between;padding:0 24px;pointer-events:none;z-index:95}
-.nav button{pointer-events:auto;padding:12px 18px;border-radius:22px;border:none;background:linear-gradient(145deg,#202021,#121213);color:var(--accent);font-weight:700;cursor:pointer;box-shadow:var(--btn-shadow)}
+.nav{position:fixed;left:0;right:0;bottom:18px;display:flex;justify-content:space-between;padding:0 24px;pointer-events:none;z-index:110}
+.nav button{pointer-events:auto;padding:12px 18px;border-radius:22px;border:none;background:linear-gradient(145deg,#202021,#121213);color:var(--accent);font-weight:700;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,0.55)}
 
-/* cover reveal overlay */
-.cover-overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:210;backdrop-filter: blur(6px);pointer-events:none;opacity:0;transform:scale(.98);transition:opacity .45s,transform .45s}
+/* reading-mode: hide sidebar and expand padding */
+body.reading #sidebar{transform:translateX(-120%);opacity:0;pointer-events:none}
+body.reading #main{padding:12px}
+body.reading #viewer{border-radius:10px;padding:36px}
+
+/* COVER REVEAL */
+.cover-overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:210;pointer-events:none;opacity:0;transform:scale(.98);transition:opacity .35s,transform .35s}
 .cover-overlay.show{opacity:1;pointer-events:auto;transform:scale(1)}
-.cover-card{width:56vw;max-width:720px;border-radius:18px;overflow:hidden;box-shadow:0 40px 120px rgba(0,0,0,0.85)}
-.cover-card img{width:100%;height:auto;display:block;filter:drop-shadow(0 20px 40px rgba(0,0,0,0.6))}
+.cover-card{width:64vw;max-width:720px;border-radius:16px;overflow:hidden;box-shadow:0 40px 120px rgba(0,0,0,0.85)}
+.cover-card img{width:100%;height:auto;display:block}
 
 /* fog & cursor */
-#fog{position:fixed;inset:0;background:radial-gradient(circle at 50% 40%, rgba(255,255,255,0.02), rgba(255,255,255,0.01) 10%, rgba(0,0,0,0.85) 40%);pointer-events:none;opacity:0;transition:opacity .35s;z-index:200}
-#cursorGlow{position:fixed;width:14px;height:14px;border-radius:50%;pointer-events:none;mix-blend-mode:screen;box-shadow:0 0 36px 8px rgba(245,245,220,0.22);transform:translate(-50%,-50%);z-index:300;transition:all .08s linear}
-
-/* fullscreen behavior */
-body.fullscreen #sidebar{display:none}
-body.fullscreen #main{padding:18px}
+#fog{position:fixed;inset:0;background:radial-gradient(circle at 50% 40%, rgba(255,255,255,0.02), rgba(255,255,255,0.01) 10%, rgba(0,0,0,0.85) 40%);pointer-events:none;opacity:0;transition:opacity .45s;z-index:200}
+#cursorGlow{position:fixed;width:16px;height:16px;border-radius:50%;pointer-events:none;mix-blend-mode:screen;box-shadow:0 0 36px 8px rgba(245,245,220,0.22);transform:translate(-50%,-50%);z-index:300;transition:all .08s linear}
 
 /* responsive */
-@media (max-width:900px){ #sidebar{display:none} #viewer{padding:20px} .cover-card{width:86vw} }
+@media (max-width:900px){ #sidebar{display:none} #viewer{padding:18px} .cover-card{width:86vw} }
 </style>
 </head>
 <body>
 <div id="app">
   <aside id="sidebar">
     <h1>Comick Library</h1>
-
     <div class="controls">
       <label class="add-btn">Select EPUB
         <input id="epubInput" type="file" accept=".epub">
       </label>
-
-      <label class="add-btn">Select Cover (optional)
+      <label class="add-btn">Upload Cover (optional)
         <input id="coverInput" type="file" accept="image/*">
       </label>
-
       <div style="display:flex;gap:8px">
         <button id="addSeriesBtn" class="add-btn">Add</button>
         <button id="toggleFullscreenBtn" class="add-btn">Fullscreen</button>
         <button id="downloadAllBtn" class="add-btn">Download All</button>
       </div>
     </div>
-
     <div id="statusMsg">Ready</div>
-
     <div class="tiles" id="tiles"></div>
   </aside>
 
   <main id="main">
     <div id="homepageView" style="width:100%;max-width:1200px">
-      <div style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <h2 style="margin:0;font-family:var(--heading-font)">Your Library</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h2 style="margin:0;font-family:'Playfair Display',serif">Your Library</h2>
         <div style="color:var(--muted);font-size:13px">Click to open • Right-click to delete • Resumes automatically</div>
       </div>
     </div>
@@ -176,30 +137,21 @@ body.fullscreen #main{padding:18px}
   </main>
 </div>
 
-<!-- cover reveal -->
-<div id="coverOverlay" class="cover-overlay" aria-hidden="true">
-  <div class="cover-card" id="coverCard"><img id="coverCardImg" src="" alt="cover"></div>
-</div>
-
-<!-- top progress slider -->
-<div id="progressTop" style="display:none">
-  <div id="progressLabel" style="font-family:var(--body-font);font-size:13px;color:var(--muted)">Chapter</div>
-  <input id="progressRange" type="range" min="0" max="0" value="0">
-</div>
-
+<div id="coverOverlay" class="cover-overlay"><div class="cover-card" id="coverCard"><img id="coverCardImg" src="" alt="cover"></div></div>
 <div id="fog"></div>
 <div id="cursorGlow"></div>
 
 <script>
-/* Polished UI wrapper around the validated lazy reader engine
-   - keeps parser/lazy-load (JSZip) as in previous working version
-   - UI improvements, top slider, cover reveal, fullscreen hide
-   - Defensive: if anything missing show console errors to patch
+/* Single-file Comick reader — fixes applied:
+   - reading mode distinct (sidebar auto-hide)
+   - header no longer blurs/overlaps content
+   - restore interactive hover feedback
+   - robust chapter insertion: if no <p> found, inject readable text
+   - faster paragraph reveal; always visible for reading
 */
 
-/* IndexedDB helpers (unchanged, compatible) */
 const DB_NAME='comick_comick_v1', STORE='series';
-let db = null;
+let db=null;
 async function openDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open(DB_NAME,1); r.onupgradeneeded=e=>{ db=e.target.result; if(!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE,{keyPath:'id'}); }; r.onsuccess=e=>{ db=e.target.result; res(db); }; r.onerror=e=>rej(e); });}
 async function getAll(){ if(!db) await openDB(); return new Promise(res=>{ const tx=db.transaction(STORE,'readonly'); const store=tx.objectStore(STORE); const q=store.getAll(); q.onsuccess=()=>res(q.result); });}
 async function getById(id){ if(!db) await openDB(); return new Promise(res=>{ const tx=db.transaction(STORE,'readonly'); tx.objectStore(STORE).get(id).onsuccess=e=>res(e.target.result); });}
@@ -217,18 +169,17 @@ const downloadEpubBtn = document.getElementById('downloadEpub'), toggleFullscree
 const downloadAllBtn = document.getElementById('downloadAllBtn');
 const fog = document.getElementById('fog'), cursorGlow = document.getElementById('cursorGlow');
 const coverOverlay = document.getElementById('coverOverlay'), coverCardImg = document.getElementById('coverCardImg');
-const progressTop = document.getElementById('progressTop'), progressRange = document.getElementById('progressRange'), progressLabel = document.getElementById('progressLabel');
 
 let library = [], currentSeries = null, currentZip = null;
 let chaptersMeta = [], observer = null, currentChapterIndex = 0;
 
-/* helper utilities (same resilient utils used before) */
+/* small utils */
 function showStatus(t){ statusMsg.textContent = t; }
 function uid(){ return 's_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
 function dataURLFromFile(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }); }
 function downloadBlob(b,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=name; document.body.appendChild(a); a.click(); a.remove(); }
 
-/* parsing helpers (copied from proven working version) */
+/* robust zip helpers (kept from working engine) */
 function tryGetFile(zip, path){
   if(!path) return null;
   if(zip.file(path)) return zip.file(path);
@@ -349,35 +300,27 @@ async function loadChapterHtml(zip, basePath, href){
   if(bodies && bodies.length>0) html = serializer.serializeToString(bodies[0]).replace(/^<body[^>]*>/i,'').replace(/<\/body>$/i,'');
   else html = serializer.serializeToString(doc);
   let title = '';
-  const t = doc.getElementsByTagName('title')[0] || doc.querySelector && doc.querySelector('h1');
+  const t = doc.getElementsByTagName('title')[0] || (doc.querySelector && doc.querySelector('h1'));
   if(t) title = (t.textContent||'').trim();
   return { html, title: title || href.split('/').pop() };
 }
 
-/* UI render library */
+/* render library */
 async function renderLibrary(){
-  tilesEl.innerHTML = '';
+  tilesEl.innerHTML='';
   showStatus('Loading library...');
   const list = await getAll().catch(e=>{ console.error(e); return []; });
   library = list.sort((a,b)=> (a.title||'').localeCompare(b.title||''));
   for(const s of library){
     const tile = document.createElement('div'); tile.className='tile';
-    if(s.cover){
-      const img = document.createElement('img'); img.src = s.cover; tile.appendChild(img);
-    } else {
-      const img = document.createElement('img'); img.src = 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='800' height='1200'><rect width='100%' height='100%' fill='#0b0b0d'/><text x='50%' y='54%' font-size='30' fill='#efe7c9' text-anchor='middle' font-family='Playfair Display'>${(s.title||'Untitled')}</text></svg>`); tile.appendChild(img);
-    }
+    if(s.cover){ const img = document.createElement('img'); img.src=s.cover; tile.appendChild(img); }
+    else { const img = document.createElement('img'); img.src = 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='800' height='1200'><rect width='100%' height='100%' fill='#111'/><text x='50%' y='54%' font-size='28' fill='#efe7c9' text-anchor='middle' font-family='Playfair Display'>${(s.title||'Untitled')}</text></svg>`); tile.appendChild(img); }
     const meta = document.createElement('div'); meta.className='meta';
     const t = document.createElement('span'); t.className='title'; t.textContent = s.title || 'Untitled';
     const r = document.createElement('span'); r.className='resume'; r.textContent = (s.lastIndex >= 0) ? 'Resume' : '';
-    meta.appendChild(t); meta.appendChild(r);
-    tile.appendChild(meta);
+    meta.appendChild(t); meta.appendChild(r); tile.appendChild(meta);
 
-    tile.addEventListener('contextmenu', (ev)=>{
-      ev.preventDefault();
-      if(confirm(`Delete "${s.title}"? This removes stored EPUB and progress.`)){ deleteById(s.id).then(()=>renderLibrary()); }
-    });
-
+    tile.addEventListener('contextmenu', ev=>{ ev.preventDefault(); if(confirm(`Delete "${s.title}"?`)){ deleteById(s.id).then(()=>renderLibrary()); }});
     tile.addEventListener('click', ()=> openSeriesWithCover(s.id));
     tilesEl.appendChild(tile);
   }
@@ -385,15 +328,14 @@ async function renderLibrary(){
 }
 
 /* add series */
-addBtn.addEventListener('click', async ()=>{
+document.getElementById('addSeriesBtn').addEventListener('click', async ()=>{
   const epubFile = epubInput.files[0];
-  if(!epubFile){ alert('Choose an EPUB first'); return; }
+  if(!epubFile){ alert('Choose an EPUB'); return; }
   showStatus('Caching EPUB...');
   try{
     const blob = epubFile.slice(0, epubFile.size, epubFile.type || 'application/epub+zip');
     const cover = coverInput.files[0] ? await dataURLFromFile(coverInput.files[0]) : null;
-    const id = uid();
-    const title = (epubFile.name||id).replace(/\.epub$/i,'');
+    const id = uid(), title = (epubFile.name||id).replace(/\.epub$/i,'');
     await putObj({ id, title, epub: blob, cover, lastIndex: 0 });
     epubInput.value=''; coverInput.value='';
     await renderLibrary();
@@ -406,13 +348,12 @@ async function openSeriesWithCover(id){
   const s = await getById(id);
   if(!s) return alert('Series missing');
   currentSeries = s;
-  if(s.cover) coverCardImg.src = s.cover;
-  else coverCardImg.src = 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='1800'><rect width='100%' height='100%' fill='#0b0b0d'/><text x='50%' y='52%' font-size='48' fill='#efe7c9' text-anchor='middle' font-family='Playfair Display'>${s.title||'Untitled'}</text></svg>`);
+  coverCardImg.src = s.cover || ('data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='1800'><rect width='100%' height='100%' fill='#0b0b0d'/><text x='50%' y='52%' font-size='48' fill='#efe7c9' text-anchor='middle' font-family='Playfair Display'>${s.title||'Untitled'}</text></svg>`));
   coverOverlay.classList.add('show');
-  setTimeout(()=>{ coverOverlay.classList.remove('show'); openSeries(id); }, 800);
+  setTimeout(()=>{ coverOverlay.classList.remove('show'); openSeries(id); }, 750);
 }
 
-/* open series (lazy load engine) */
+/* open series (lazy) */
 async function openSeries(id){
   showStatus('Preparing book...');
   try{
@@ -422,17 +363,15 @@ async function openSeries(id){
     seriesTitle.textContent = s.title || 'Series';
     homepageView.style.display='none';
     readerWrap.style.display='block';
-    // hide sidebar visually for focus
-    document.getElementById('sidebar').style.transform = 'translateX(-18px)'; // subtle
+    // set reading mode - hides sidebar visually
+    document.body.classList.add('reading');
     viewer.innerHTML = '<div style="padding:22px;color:var(--muted)">Preparing book…</div>';
     currentZip = await JSZip.loadAsync(await (s.epub instanceof Blob ? s.epub.arrayBuffer() : s.epub));
     const spineData = await readSpineFromZip(currentZip);
-    const base = spineData.basePath;
-    const manifest = spineData.manifestMap;
-    const spineList = spineData.spineList;
+    const base = spineData.basePath, manifest = spineData.manifestMap, spineList = spineData.spineList;
     chaptersMeta = buildChaptersFromManifest(base, manifest, spineList);
     if(chaptersMeta.length === 0){ viewer.innerHTML = '<div style="padding:22px;color:var(--muted)">No readable chapters found.</div>'; showStatus('Ready'); return; }
-    // placeholders
+    // build placeholders
     viewer.innerHTML = '';
     const frag = document.createDocumentFragment();
     chaptersMeta.forEach((meta, idx)=>{
@@ -441,7 +380,7 @@ async function openSeries(id){
       frag.appendChild(ph);
     });
     viewer.appendChild(frag);
-    // observer
+    // intersection to lazy load
     if(observer) observer.disconnect();
     observer = new IntersectionObserver(async (entries)=>{
       for(const e of entries){
@@ -450,16 +389,11 @@ async function openSeries(id){
           if(!e.target.classList.contains('chapter-loaded')) await loadChapterAt(idx);
         }
       }
-    }, { root: viewer, rootMargin: '700px', threshold: 0.02 });
-    Array.from(viewer.querySelectorAll('.chapter-placeholder')).forEach(el => observer.observe(el));
-    // first chapter immediately
+    }, { root: viewer, rootMargin: '700px', threshold: 0.01 });
+    Array.from(viewer.querySelectorAll('.chapter-placeholder')).forEach(el=>observer.observe(el));
+    // load first quickly
     loadChapterAt(0);
-    // progress UI (top)
-    progressTop.style.display = 'flex';
-    progressRange.max = Math.max(0, chaptersMeta.length - 1);
-    progressRange.value = (s.lastIndex >= 0) ? s.lastIndex : 0;
-    progressLabel.textContent = `Chapter ${Number(progressRange.value) + 1} / ${chaptersMeta.length}`;
-    // restore and scroll to saved index
+    // restore lastIndex
     currentChapterIndex = (s.lastIndex >=0 && s.lastIndex < chaptersMeta.length) ? s.lastIndex : 0;
     setTimeout(()=> scrollToChapter(currentChapterIndex, false), 260);
     viewer.addEventListener('scroll', throttle(updateCurrentByScroll, 150));
@@ -471,7 +405,7 @@ async function openSeries(id){
   }
 }
 
-/* load a chapter by index (lazy; inlines resources) */
+/* load chapter: robust insertion and guaranteed readable content */
 async function loadChapterAt(idx){
   if(!currentZip || !chaptersMeta[idx]) return;
   const placeholder = viewer.querySelector('.chapter-placeholder[data-idx="'+idx+'"]');
@@ -481,32 +415,51 @@ async function loadChapterAt(idx){
   try{
     const base = chaptersMeta[idx].href.split('/').slice(0,-1).join('/');
     const res = await loadChapterHtml(currentZip, base, chaptersMeta[idx].href);
+    // create container
     const div = document.createElement('div'); div.className = 'chapter'; div.dataset.idx = idx;
     div.innerHTML = `<div class="chapter-title">${escapeHtml(res.title)}</div><div class="chapter-body">${res.html}</div>`;
+    // robust: ensure readable text exists
+    const body = div.querySelector('.chapter-body');
+    // if no paragraph-like nodes, create a fallback paragraph with textContent
+    const hasP = body.querySelectorAll('p,div,section,article').length > 0;
+    if(!hasP){
+      const txt = (body.textContent || '').trim();
+      body.innerHTML = ''; // wipe odd markup
+      const p = document.createElement('p'); p.textContent = txt || '(no extractable text)'; body.appendChild(p);
+    } else {
+      // normalize inline blocks into paragraphs if required — ensure paragraphs exist
+      const possible = body.querySelectorAll('p');
+      if(possible.length === 0){
+        // wrap top-level text nodes / blocks into <p>
+        const blocks = Array.from(body.children);
+        body.innerHTML = ''; // we'll re-append as paragraphs
+        blocks.forEach(b=>{
+          const p = document.createElement('p');
+          p.innerHTML = b.innerHTML || b.textContent || '';
+          body.appendChild(p);
+        });
+      }
+    }
+    // replace placeholder
     placeholder.replaceWith(div);
-    setTimeout(()=> div.classList.add('visible'), 80);
-    revealParagraphsIn(div);
+    // visible immediately (fast)
+    setTimeout(()=> div.classList.add('visible'), 60);
+    // reveal paragraphs quickly (fast, not slow)
+    const ps = div.querySelectorAll('.chapter-body p');
+    ps.forEach((p,i)=> setTimeout(()=> p.classList.add('visible'), 40 + i*30));
   }catch(e){
     console.error('Chapter load failed', e);
     placeholder.textContent = 'Failed to load chapter';
   }
 }
 
-/* reveal paragraphs */
-function revealParagraphsIn(chEl){
-  const ps = chEl.querySelectorAll('p');
-  ps.forEach((p,i)=> setTimeout(()=> p.classList.add('visible'), 90 + i*55));
-}
-
-/* navigation and progress */
+/* scroll & progress helpers */
 async function scrollToChapter(idx, smooth=true){
   const el = viewer.querySelector('.chapter[data-idx="'+idx+'"], .chapter-placeholder[data-idx="'+idx+'"]');
   if(el) el.scrollIntoView({behavior: smooth ? 'smooth' : 'auto', block:'start'});
   currentChapterIndex = idx;
   if(currentSeries){ currentSeries.lastIndex = currentChapterIndex; await putObj(currentSeries); }
   updateProgressBar();
-  progressRange.value = currentChapterIndex;
-  progressLabel.textContent = `Chapter ${currentChapterIndex + 1} / ${chaptersMeta.length}`;
 }
 function updateCurrentByScroll(){
   const rect = viewer.getBoundingClientRect();
@@ -516,26 +469,16 @@ function updateCurrentByScroll(){
   if(best.idx !== currentChapterIndex){
     currentChapterIndex = best.idx;
     if(currentSeries){ currentSeries.lastIndex = currentChapterIndex; putObj(currentSeries); }
-    progressRange.value = currentChapterIndex;
-    progressLabel.textContent = `Chapter ${currentChapterIndex + 1} / ${chaptersMeta.length}`;
   }
   updateProgressBar();
 }
-function updateProgressBar(){
-  const total = Math.max(1, chaptersMeta.length);
-  const pct = Math.round(((currentChapterIndex+1) / total) * 100);
-  progressFill.style.height = pct + '%';
-}
+function updateProgressBar(){ const total = Math.max(1, chaptersMeta.length); const pct = Math.round(((currentChapterIndex+1) / total) * 100); progressFill.style.height = pct + '%'; }
 
-/* prev/next + fog */
+/* nav & keyboard */
 document.getElementById('nextBtn').addEventListener('click', ()=>{ if(currentChapterIndex < chaptersMeta.length -1) playFog(()=> scrollToChapter(currentChapterIndex+1)); });
 document.getElementById('prevBtn').addEventListener('click', ()=>{ if(currentChapterIndex > 0) playFog(()=> scrollToChapter(currentChapterIndex-1)); });
-function playFog(action){
-  fog.style.opacity = 1;
-  setTimeout(()=>{ try{ action(); }catch(e){} setTimeout(()=> fog.style.opacity = 0, 360); }, 160);
-}
+function playFog(action){ fog.style.opacity = 1; setTimeout(()=>{ try{ action(); }catch(e){} setTimeout(()=> fog.style.opacity = 0, 360); }, 180); }
 
-/* keyboard nav */
 document.addEventListener('keydown', (e)=>{
   const tag = document.activeElement && document.activeElement.tagName.toLowerCase();
   if(tag === 'input' || tag === 'textarea') return;
@@ -546,10 +489,6 @@ document.addEventListener('keydown', (e)=>{
   else if(e.code === 'ShiftRight' || e.code === 'ArrowUp'){ e.preventDefault(); viewer.scrollBy({ top: -360, behavior: 'smooth' }); }
 });
 
-/* progress range interaction */
-progressRange.addEventListener('input', (e)=>{ const idx = Number(e.target.value); progressLabel.textContent = `Chapter ${idx+1} / ${chaptersMeta.length}`; });
-progressRange.addEventListener('change', (e)=>{ scrollToChapter(Number(e.target.value)); });
-
 /* download current epub */
 downloadEpubBtn.addEventListener('click', async ()=>{
   if(!currentSeries) return alert('Open a book first');
@@ -559,11 +498,8 @@ downloadEpubBtn.addEventListener('click', async ()=>{
   downloadBlob(blob, (s.title || 'book') + '.epub');
 });
 
-/* toggle fullscreen & hide sidebar */
-toggleFullscreenBtn.addEventListener('click', ()=>{ 
-  if(!document.fullscreenElement){ document.documentElement.requestFullscreen?.().catch(()=>{ document.body.classList.toggle('fullscreen'); }); }
-  else document.exitFullscreen?.();
-});
+/* fullscreen toggle */
+toggleFullscreenBtn.addEventListener('click', ()=>{ if(!document.fullscreenElement){ document.documentElement.requestFullscreen?.().catch(()=>{}); } else document.exitFullscreen?.(); });
 document.addEventListener('fullscreenchange', ()=>{ document.body.classList.toggle('fullscreen', !!document.fullscreenElement); });
 
 /* download all */
@@ -577,14 +513,12 @@ downloadAllBtn.addEventListener('click', async ()=>{
 });
 
 /* goto library */
-gotoHome.addEventListener('click', ()=>{ readerWrap.style.display='none'; homepageView.style.display='block'; viewer.innerHTML=''; chaptersMeta=[]; if(observer) observer.disconnect(); currentZip=null; currentSeries=null; renderLibrary(); progressTop.style.display='none'; document.getElementById('sidebar').style.transform='translateX(0)'; });
-
-/* right-click delete handled in tile creation */
+gotoHome.addEventListener('click', ()=>{ readerWrap.style.display='none'; homepageView.style.display='block'; viewer.innerHTML=''; chaptersMeta=[]; if(observer) observer.disconnect(); currentZip=null; currentSeries=null; document.body.classList.remove('reading'); renderLibrary(); });
 
 /* cursor glow */
 document.addEventListener('mousemove', e => { cursorGlow.style.left = e.clientX + 'px'; cursorGlow.style.top = e.clientY + 'px'; });
 
-/* tiny helpers */
+/* small helpers */
 function escapeHtml(s){ return (''+s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function throttle(fn, wait){ let t=null; return (...a)=>{ if(t) return; t=setTimeout(()=>{ t=null; fn(...a); }, wait); }; }
 
