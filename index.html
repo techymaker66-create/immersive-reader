@@ -379,7 +379,7 @@ async function openSeries(id){
   try{
     showStatus('Initializing reader...');
     // FIX: Use blobUrl replacement to prevent external fetches!
-    book = ePub({ replacements: 'blobUrl', url: currentBookBlobUrl });
+    book = ePub({ replacements: 'blobUrl', url: currentBookBlobUrl }); // <--- FIXED HERE
     // render into "viewer" with scrolled flow
     rendition = book.renderTo(viewer, {
       width: '100%',
