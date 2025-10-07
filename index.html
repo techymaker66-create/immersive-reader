@@ -1,151 +1,124 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Comick Visual Reader — Aesthetic Edition</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Comick Reader — Polished</title>
 
 <!-- Fonts -->
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Merriweather:wght@300;400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 
 <!-- Dependency -->
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 
 <style>
 :root{
-  --bg:#0d0d0f;
-  --panel:#111113;
-  --muted:#9b9b9b;
+  --bg-1:#0d0d0f;
+  --panel:#0f0f11;
+  --muted:#9a9a9a;
   --accent:#efe7c9;
-  --glass:rgba(255,255,255,0.04);
-  --card-shadow: 0 18px 50px rgba(0,0,0,0.6);
-  --btn-shadow: 0 10px 28px rgba(0,0,0,0.55);
+  --glass:rgba(255,255,255,0.03);
+  --card-shadow: 0 26px 70px rgba(0,0,0,0.65);
+  --btn-shadow: 0 10px 30px rgba(0,0,0,0.6);
   --radius:14px;
-  --measure:62ch;
+  --measure:65ch;
+  --ui-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  --heading-font: "Playfair Display", serif;
+  --body-font: "Merriweather", serif;
 }
-
-/* reset & base */
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),#070708);color:var(--accent);-webkit-font-smoothing:antialiased;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
-a{color:inherit}
-button{font:inherit}
+html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg-1),#070708);color:var(--accent);-webkit-font-smoothing:antialiased;font-family:var(--ui-font);}
 
 /* layout */
-#app{display:flex;min-height:100vh;transition:all .18s linear}
+#app{display:flex;min-height:100vh}
 #sidebar{
   width:340px;padding:28px;background:linear-gradient(180deg,#080808,var(--panel));border-right:1px solid rgba(255,255,255,0.03);
-  display:flex;flex-direction:column;gap:12px;
+  display:flex;flex-direction:column;gap:12px;transition:transform .36s ease,opacity .28s ease;
 }
 #main{flex:1;padding:28px;display:flex;flex-direction:column;align-items:center;position:relative;overflow:hidden}
 
-/* branding */
-h1{margin:0;font-family:'Playfair Display',serif;font-size:22px;letter-spacing:1px}
+/* header / brand */
+h1{margin:0;font-family:var(--heading-font);font-size:22px;letter-spacing:1px;color:var(--accent)}
 
 /* controls */
 .controls{display:flex;flex-direction:column;gap:10px}
 .add-btn{
-  display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);
-  border:1px solid rgba(255,255,255,0.04);color:var(--accent);cursor:pointer;transition:transform .14s ease, box-shadow .14s ease;
-  box-shadow: var(--btn-shadow);
+  display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);
+  border:1px solid rgba(255,255,255,0.04);color:var(--accent);cursor:pointer;transition:transform .14s ease,box-shadow .14s;
+  box-shadow: var(--btn-shadow);font-family:var(--ui-font);font-weight:600;
 }
-.add-btn:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(0,0,0,0.65)}
-.add-btn:active{transform:translateY(-1px) scale(.995)}
+.add-btn:hover{transform:translateY(-6px);box-shadow:0 22px 48px rgba(0,0,0,0.7)}
+.add-btn:active{transform:translateY(-2px) scale(.995)}
 .add-btn input{display:none}
-
-/* status */
-#statusMsg{color:var(--muted);font-size:13px}
+#statusMsg{color:var(--muted);font-size:13px;margin-top:6px}
 
 /* tiles grid */
 .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:18px;margin-top:8px}
 .tile{
-  border-radius:12px;overflow:hidden;position:relative;background:#0f0f10;cursor:pointer;
-  transition:transform .22s cubic-bezier(.2,.9,.2,1), box-shadow .22s;box-shadow:0 8px 26px rgba(0,0,0,0.6);
-  display:block;
+  border-radius:12px;overflow:hidden;position:relative;background:#0f0f10;cursor:pointer;transition:transform .22s,box-shadow .22s;box-shadow:0 10px 32px rgba(0,0,0,0.55);
+  display:block;min-height:220px;
 }
-.tile:hover{transform:translateY(-8px) scale(1.02);box-shadow:0 26px 64px rgba(0,0,0,0.7)}
+.tile:hover{transform:translateY(-8px) scale(1.02);box-shadow:0 30px 80px rgba(0,0,0,0.7)}
 .tile img{width:100%;height:100%;object-fit:cover;display:block;aspect-ratio:2/3}
 .tile .meta{
-  position:absolute;left:0;right:0;bottom:0;padding:12px;background:linear-gradient(180deg,transparent,rgba(0,0,0,0.7));
+  position:absolute;left:0;right:0;bottom:0;padding:12px;background:linear-gradient(180deg,transparent,rgba(0,0,0,0.72));
   display:flex;justify-content:space-between;align-items:center;gap:8px;
-  backdrop-filter: blur(4px);
 }
-.tile .meta .title{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tile .meta .resume{font-size:12px;color:var(--muted)}
+.tile .title{font-size:13px;font-family:var(--body-font)}
+.tile .resume{font-size:12px;color:var(--muted)}
 
-/* reader area */
+/* reader */
 #readerWrap{display:none;position:relative;width:100%;height:100vh;overflow:hidden}
-#readerHeader{
-  width:100%;display:flex;justify-content:space-between;align-items:center;padding:18px 28px;position:fixed;top:0;left:0;z-index:90;
-  background:linear-gradient(180deg, rgba(10,10,10,0.9), transparent);backdrop-filter: blur(4px);
-}
-#readerHeader h2{margin:0;font-family:'Playfair Display',serif}
-
-/* viewer card */
-#viewerContainer{width:100%;max-width:1200px;margin-top:78px;margin-bottom:84px;position:relative}
+#readerHeader{width:100%;display:flex;justify-content:space-between;align-items:center;padding:18px 28px;position:fixed;top:0;left:0;z-index:140;background:linear-gradient(180deg, rgba(8,8,8,0.95), transparent);backdrop-filter: blur(6px)}
+#readerHeader h2{margin:0;font-family:var(--heading-font);font-size:18px;color:var(--accent)}
+#viewerContainer{width:100%;max-width:1200px;margin-top:80px;margin-bottom:86px;position:relative}
 #viewer{
-  background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));
-  padding:34px;border-radius:18px;box-shadow:var(--card-shadow);max-height:78vh;overflow:auto;scroll-behavior:smooth;
+  background:linear-gradient(180deg, rgba(255,255,255,0.006), rgba(255,255,255,0.003));
+  padding:40px;border-radius:16px;box-shadow:var(--card-shadow);max-height:78vh;overflow:auto;scroll-behavior:smooth;
+  -webkit-overflow-scrolling:touch;
 }
 
-/* chapter card (Comick) */
-.chapter{
-  margin:30px 0;padding:34px;border-radius:14px;background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(255,255,255,0.004));box-shadow:0 12px 40px rgba(0,0,0,0.6);
-  transform-origin:center;opacity:0;transform:translateY(14px);
-}
-.chapter.visible{opacity:1;transform:translateY(0);transition:transform .5s cubic-bezier(.2,.9,.2,1),opacity .5s;}
-.chapter .chapter-title{font-size:20px;margin:0 0 12px 0;font-family:'Playfair Display',serif}
-.chapter .chapter-body{
-  max-width:var(--measure);margin:0 auto;color:var(--accent);font-size:18px;line-height:1.85;text-align:justify;hyphens:auto;
-  -webkit-hyphens:auto;
-}
-/* dropcap */
-.chapter .chapter-body p:first-of-type::first-letter{
-  float:left;font-size:64px;line-height:54px;padding-right:12px;padding-top:6px;color:var(--accent);font-family:'Playfair Display',serif;
-  font-weight:600;
-}
-/* paragraphs reveal */
-.chapter .chapter-body p{opacity:0;transition:opacity .9s ease;margin:0 0 1.05em}
-.chapter .chapter-body p.visible{opacity:1}
+/* chapter card */
+.chapter{margin:32px 0;padding:36px;border-radius:14px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.004));box-shadow:0 10px 40px rgba(0,0,0,0.55);opacity:0;transform:translateY(16px)}
+.chapter.visible{opacity:1;transform:translateY(0);transition:all .5s cubic-bezier(.2,.9,.2,1)}
+.chapter-title{font-family:var(--heading-font);font-size:20px;margin:0 0 14px 0}
+.chapter-body{font-family:var(--body-font);max-width:var(--measure);margin:0 auto;color:var(--accent);font-size:18px;line-height:1.85;text-align:justify;hyphens:auto;padding-right:6px}
 
-/* placeholders (lazy) */
-.chapter-placeholder{padding:20px;border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(255,255,255,0.005));margin:16px 0;text-align:center;color:var(--muted)}
-
-/* progress & nav */
-#progressBar{position:fixed;right:20px;top:20px;width:10px;height:60vh;background:rgba(255,255,255,0.03);border-radius:20px;overflow:hidden;z-index:95}
-#progressFill{width:100%;height:0;background:linear-gradient(180deg,var(--accent),#d4d4b8)}
-.nav{position:fixed;left:0;right:0;bottom:24px;display:flex;justify-content:space-between;padding:0 40px;pointer-events:none;z-index:95}
-.nav button{
-  pointer-events:auto;padding:12px 18px;border-radius:28px;border:none;background:linear-gradient(145deg,#222223,#141414);
-  color:var(--accent);font-weight:600;cursor:pointer;box-shadow:var(--btn-shadow);transition:transform .12s,box-shadow .12s;
+/* dropcap refined */
+.chapter-body p:first-of-type::first-letter{
+  float:left;font-size:62px;line-height:56px;padding-right:12px;padding-top:6px;color:var(--accent);font-family:var(--heading-font);font-weight:700;
 }
-.nav button:hover{transform:translateY(-6px) scale(1.03);box-shadow:0 22px 54px rgba(0,0,0,0.7)}
-.nav button:active{transform:translateY(-2px) scale(.995)}
+.chapter-body p{opacity:0;transition:opacity .9s ease;margin:0 0 1.05em}
+
+/* placeholder (lazy) */
+.chapter-placeholder{padding:18px;border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(255,255,255,0.004));margin:18px 0;text-align:center;color:var(--muted)}
+
+/* progress slider (top) */
+#progressTop{position:fixed;left:50%;transform:translateX(-50%);top:10px;z-index:200;display:flex;align-items:center;gap:10px;background:rgba(0,0,0,0.28);padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.03)}
+#progressTop input[type="range"]{width:320px;background:transparent}
+
+/* side controls & nav */
+#progressBar{position:fixed;right:20px;top:20px;width:10px;height:56vh;background:rgba(255,255,255,0.03);border-radius:20px;overflow:hidden;z-index:95}
+#progressFill{width:100%;height:0;background:linear-gradient(180deg,var(--accent), #d4d4b8)}
+.nav{position:fixed;left:0;right:0;bottom:20px;display:flex;justify-content:space-between;padding:0 24px;pointer-events:none;z-index:95}
+.nav button{pointer-events:auto;padding:12px 18px;border-radius:22px;border:none;background:linear-gradient(145deg,#202021,#121213);color:var(--accent);font-weight:700;cursor:pointer;box-shadow:var(--btn-shadow)}
 
 /* cover reveal overlay */
-.cover-overlay{
-  position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:110;backdrop-filter: blur(8px);
-  pointer-events:none;opacity:0;transform:scale(.98);transition:opacity .45s, transform .45s;
-}
+.cover-overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:210;backdrop-filter: blur(6px);pointer-events:none;opacity:0;transform:scale(.98);transition:opacity .45s,transform .45s}
 .cover-overlay.show{opacity:1;pointer-events:auto;transform:scale(1)}
-.cover-card{width:60vw;max-width:720px;border-radius:18px;overflow:hidden;box-shadow:0 40px 120px rgba(0,0,0,0.8)}
-.cover-card img{width:100%;height:auto;display:block}
+.cover-card{width:56vw;max-width:720px;border-radius:18px;overflow:hidden;box-shadow:0 40px 120px rgba(0,0,0,0.85)}
+.cover-card img{width:100%;height:auto;display:block;filter:drop-shadow(0 20px 40px rgba(0,0,0,0.6))}
 
-/* fog + cursor */
-#fog{position:fixed;inset:0;background:radial-gradient(circle at 50% 40%, rgba(255,255,255,0.02), rgba(255,255,255,0.01) 10%, rgba(0,0,0,0.85) 40%);pointer-events:none;opacity:0;transition:opacity .35s;z-index:90}
-#cursorGlow{position:fixed;width:16px;height:16px;border-radius:50%;pointer-events:none;mix-blend-mode:screen;box-shadow:0 0 36px 8px rgba(245,245,220,0.22);transform:translate(-50%,-50%);z-index:200;transition:all .08s linear}
-.interactive-hover:hover ~ #cursorGlow{ transform: translate(-50%,-50%) scale(1.25); box-shadow:0 0 48px 14px rgba(245,245,220,0.28); }
+/* fog & cursor */
+#fog{position:fixed;inset:0;background:radial-gradient(circle at 50% 40%, rgba(255,255,255,0.02), rgba(255,255,255,0.01) 10%, rgba(0,0,0,0.85) 40%);pointer-events:none;opacity:0;transition:opacity .35s;z-index:200}
+#cursorGlow{position:fixed;width:14px;height:14px;border-radius:50%;pointer-events:none;mix-blend-mode:screen;box-shadow:0 0 36px 8px rgba(245,245,220,0.22);transform:translate(-50%,-50%);z-index:300;transition:all .08s linear}
 
-/* fullscreen: hide sidebar */
+/* fullscreen behavior */
 body.fullscreen #sidebar{display:none}
-body.fullscreen #main{padding:12px}
+body.fullscreen #main{padding:18px}
 
-/* small screens */
-@media (max-width:900px){
-  #sidebar{display:none}
-  #viewer{padding:18px}
-  .chapter{padding:22px}
-  .cover-card{width:86vw}
-}
+/* responsive */
+@media (max-width:900px){ #sidebar{display:none} #viewer{padding:20px} .cover-card{width:86vw} }
 </style>
 </head>
 <body>
@@ -154,29 +127,30 @@ body.fullscreen #main{padding:12px}
     <h1>Comick Library</h1>
 
     <div class="controls">
-      <label class="add-btn interactive-hover">Select EPUB
+      <label class="add-btn">Select EPUB
         <input id="epubInput" type="file" accept=".epub">
       </label>
 
-      <label class="add-btn interactive-hover">Select Cover (optional)
+      <label class="add-btn">Select Cover (optional)
         <input id="coverInput" type="file" accept="image/*">
       </label>
 
       <div style="display:flex;gap:8px">
-        <button id="addSeriesBtn" class="add-btn interactive-hover">Add</button>
-        <button id="toggleFullscreenBtn" class="add-btn interactive-hover">Fullscreen</button>
-        <button id="downloadAllBtn" class="add-btn interactive-hover">Download All</button>
+        <button id="addSeriesBtn" class="add-btn">Add</button>
+        <button id="toggleFullscreenBtn" class="add-btn">Fullscreen</button>
+        <button id="downloadAllBtn" class="add-btn">Download All</button>
       </div>
     </div>
 
     <div id="statusMsg">Ready</div>
+
     <div class="tiles" id="tiles"></div>
   </aside>
 
   <main id="main">
     <div id="homepageView" style="width:100%;max-width:1200px">
       <div style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <h2 style="margin:0">Your Library</h2>
+        <h2 style="margin:0;font-family:var(--heading-font)">Your Library</h2>
         <div style="color:var(--muted);font-size:13px">Click to open • Right-click to delete • Resumes automatically</div>
       </div>
     </div>
@@ -185,17 +159,18 @@ body.fullscreen #main{padding:12px}
       <div id="readerHeader">
         <h2 id="seriesTitle">Series</h2>
         <div>
-          <button id="gotoHome" class="add-btn interactive-hover">Library</button>
-          <button id="downloadEpub" class="add-btn interactive-hover">Download EPUB</button>
+          <button id="gotoHome" class="add-btn">Library</button>
+          <button id="downloadEpub" class="add-btn">Download EPUB</button>
         </div>
       </div>
 
       <div id="viewerContainer"><div id="viewer" tabindex="0"></div></div>
 
       <div id="progressBar"><div id="progressFill"></div></div>
+
       <div class="nav">
-        <button id="prevBtn" class="interactive-hover">⟵ Prev</button>
-        <button id="nextBtn" class="interactive-hover">Next ⟶</button>
+        <button id="prevBtn">⟵ Prev</button>
+        <button id="nextBtn">Next ⟶</button>
       </div>
     </div>
   </main>
@@ -206,17 +181,23 @@ body.fullscreen #main{padding:12px}
   <div class="cover-card" id="coverCard"><img id="coverCardImg" src="" alt="cover"></div>
 </div>
 
+<!-- top progress slider -->
+<div id="progressTop" style="display:none">
+  <div id="progressLabel" style="font-family:var(--body-font);font-size:13px;color:var(--muted)">Chapter</div>
+  <input id="progressRange" type="range" min="0" max="0" value="0">
+</div>
+
 <div id="fog"></div>
 <div id="cursorGlow"></div>
 
 <script>
-/* ===== Comick Visual — Aesthetic-only update
-   Keeps existing optimized EPUB logic (lazy load, JSZip) intact.
-   This script wires new UI interactions (cover reveal, fullscreen) and
-   keeps library / lazy load functions compatible with previous version.
+/* Polished UI wrapper around the validated lazy reader engine
+   - keeps parser/lazy-load (JSZip) as in previous working version
+   - UI improvements, top slider, cover reveal, fullscreen hide
+   - Defensive: if anything missing show console errors to patch
 */
 
-/* minimal IndexedDB helpers (same names as before) */
+/* IndexedDB helpers (unchanged, compatible) */
 const DB_NAME='comick_comick_v1', STORE='series';
 let db = null;
 async function openDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open(DB_NAME,1); r.onupgradeneeded=e=>{ db=e.target.result; if(!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE,{keyPath:'id'}); }; r.onsuccess=e=>{ db=e.target.result; res(db); }; r.onerror=e=>rej(e); });}
@@ -236,21 +217,18 @@ const downloadEpubBtn = document.getElementById('downloadEpub'), toggleFullscree
 const downloadAllBtn = document.getElementById('downloadAllBtn');
 const fog = document.getElementById('fog'), cursorGlow = document.getElementById('cursorGlow');
 const coverOverlay = document.getElementById('coverOverlay'), coverCardImg = document.getElementById('coverCardImg');
+const progressTop = document.getElementById('progressTop'), progressRange = document.getElementById('progressRange'), progressLabel = document.getElementById('progressLabel');
 
-/* utilities */
+let library = [], currentSeries = null, currentZip = null;
+let chaptersMeta = [], observer = null, currentChapterIndex = 0;
+
+/* helper utilities (same resilient utils used before) */
 function showStatus(t){ statusMsg.textContent = t; }
 function uid(){ return 's_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
 function dataURLFromFile(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }); }
 function downloadBlob(b,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=name; document.body.appendChild(a); a.click(); a.remove(); }
 
-/* preserved lazy-load helpers (abridged for clarity) */
-/* tryGetFile, xmlParse, findOpfPath, readSpineFromZip, buildChaptersFromManifest, loadChapterHtml
-   -- these are identical to the previously working optimized reader and intentionally
-   not rewritten here to avoid breaking the parsing/rules you've validated.
-   For brevity they are re-included in full below so this file is copy-paste-ready.
-*/
-
-/* ------ robust helpers (same as before) ------ */
+/* parsing helpers (copied from proven working version) */
 function tryGetFile(zip, path){
   if(!path) return null;
   if(zip.file(path)) return zip.file(path);
@@ -375,11 +353,8 @@ async function loadChapterHtml(zip, basePath, href){
   if(t) title = (t.textContent||'').trim();
   return { html, title: title || href.split('/').pop() };
 }
-/* ---------------- end parsing helpers ---------------- */
 
-let library = [], currentSeries = null, currentZip = null;
-let chaptersMeta = [], observer = null, currentChapterIndex = 0;
-
+/* UI render library */
 async function renderLibrary(){
   tilesEl.innerHTML = '';
   showStatus('Loading library...');
@@ -390,7 +365,7 @@ async function renderLibrary(){
     if(s.cover){
       const img = document.createElement('img'); img.src = s.cover; tile.appendChild(img);
     } else {
-      const img = document.createElement('img'); img.src = 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='800' height='1200'><rect width='100%' height='100%' fill='#111'/><text x='50%' y='54%' font-size='28' fill='#e6e0c8' text-anchor='middle' font-family='Playfair Display'>${(s.title||'Untitled')}</text></svg>`); tile.appendChild(img);
+      const img = document.createElement('img'); img.src = 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='800' height='1200'><rect width='100%' height='100%' fill='#0b0b0d'/><text x='50%' y='54%' font-size='30' fill='#efe7c9' text-anchor='middle' font-family='Playfair Display'>${(s.title||'Untitled')}</text></svg>`); tile.appendChild(img);
     }
     const meta = document.createElement('div'); meta.className='meta';
     const t = document.createElement('span'); t.className='title'; t.textContent = s.title || 'Untitled';
@@ -400,7 +375,7 @@ async function renderLibrary(){
 
     tile.addEventListener('contextmenu', (ev)=>{
       ev.preventDefault();
-      if(confirm(`Delete "${s.title}"?`)){ deleteById(s.id).then(()=>renderLibrary()); }
+      if(confirm(`Delete "${s.title}"? This removes stored EPUB and progress.`)){ deleteById(s.id).then(()=>renderLibrary()); }
     });
 
     tile.addEventListener('click', ()=> openSeriesWithCover(s.id));
@@ -409,7 +384,7 @@ async function renderLibrary(){
   showStatus('Ready');
 }
 
-/* Add series */
+/* add series */
 addBtn.addEventListener('click', async ()=>{
   const epubFile = epubInput.files[0];
   if(!epubFile){ alert('Choose an EPUB first'); return; }
@@ -426,24 +401,18 @@ addBtn.addEventListener('click', async ()=>{
   }catch(e){ console.error(e); alert('Add failed'); showStatus('Ready'); }
 });
 
-/* Cover reveal flow: show cover card before actual open */
+/* cover reveal then open */
 async function openSeriesWithCover(id){
   const s = await getById(id);
   if(!s) return alert('Series missing');
   currentSeries = s;
-  // show overlay
-  if(s.cover){
-    coverCardImg.src = s.cover;
-  } else {
-    // tiny placeholder
-    coverCardImg.src = 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='1800'><rect width='100%' height='100%' fill='#0b0b0d'/><text x='50%' y='52%' font-size='48' fill='#efe7c9' text-anchor='middle' font-family='Playfair Display'>${s.title||'Untitled'}</text></svg>`);
-  }
+  if(s.cover) coverCardImg.src = s.cover;
+  else coverCardImg.src = 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='1800'><rect width='100%' height='100%' fill='#0b0b0d'/><text x='50%' y='52%' font-size='48' fill='#efe7c9' text-anchor='middle' font-family='Playfair Display'>${s.title||'Untitled'}</text></svg>`);
   coverOverlay.classList.add('show');
-  // small cinematic pause
-  setTimeout(()=>{ coverOverlay.classList.remove('show'); openSeries(id); }, 900);
+  setTimeout(()=>{ coverOverlay.classList.remove('show'); openSeries(id); }, 800);
 }
 
-/* Open series: same lazy-load approach as previous optimized version */
+/* open series (lazy load engine) */
 async function openSeries(id){
   showStatus('Preparing book...');
   try{
@@ -453,7 +422,9 @@ async function openSeries(id){
     seriesTitle.textContent = s.title || 'Series';
     homepageView.style.display='none';
     readerWrap.style.display='block';
-    viewer.innerHTML = '<div style="padding:22px;color:var(--muted)">Preparing book — quick step…</div>';
+    // hide sidebar visually for focus
+    document.getElementById('sidebar').style.transform = 'translateX(-18px)'; // subtle
+    viewer.innerHTML = '<div style="padding:22px;color:var(--muted)">Preparing book…</div>';
     currentZip = await JSZip.loadAsync(await (s.epub instanceof Blob ? s.epub.arrayBuffer() : s.epub));
     const spineData = await readSpineFromZip(currentZip);
     const base = spineData.basePath;
@@ -461,6 +432,7 @@ async function openSeries(id){
     const spineList = spineData.spineList;
     chaptersMeta = buildChaptersFromManifest(base, manifest, spineList);
     if(chaptersMeta.length === 0){ viewer.innerHTML = '<div style="padding:22px;color:var(--muted)">No readable chapters found.</div>'; showStatus('Ready'); return; }
+    // placeholders
     viewer.innerHTML = '';
     const frag = document.createDocumentFragment();
     chaptersMeta.forEach((meta, idx)=>{
@@ -469,6 +441,7 @@ async function openSeries(id){
       frag.appendChild(ph);
     });
     viewer.appendChild(frag);
+    // observer
     if(observer) observer.disconnect();
     observer = new IntersectionObserver(async (entries)=>{
       for(const e of entries){
@@ -477,13 +450,18 @@ async function openSeries(id){
           if(!e.target.classList.contains('chapter-loaded')) await loadChapterAt(idx);
         }
       }
-    }, { root: viewer, rootMargin: '700px', threshold: 0.01 });
+    }, { root: viewer, rootMargin: '700px', threshold: 0.02 });
     Array.from(viewer.querySelectorAll('.chapter-placeholder')).forEach(el => observer.observe(el));
-    // first chapter immediate
+    // first chapter immediately
     loadChapterAt(0);
-    // restore saved reading index
+    // progress UI (top)
+    progressTop.style.display = 'flex';
+    progressRange.max = Math.max(0, chaptersMeta.length - 1);
+    progressRange.value = (s.lastIndex >= 0) ? s.lastIndex : 0;
+    progressLabel.textContent = `Chapter ${Number(progressRange.value) + 1} / ${chaptersMeta.length}`;
+    // restore and scroll to saved index
     currentChapterIndex = (s.lastIndex >=0 && s.lastIndex < chaptersMeta.length) ? s.lastIndex : 0;
-    setTimeout(()=> scrollToChapter(currentChapterIndex, false), 300);
+    setTimeout(()=> scrollToChapter(currentChapterIndex, false), 260);
     viewer.addEventListener('scroll', throttle(updateCurrentByScroll, 150));
     showStatus('Ready');
   }catch(err){
@@ -493,7 +471,7 @@ async function openSeries(id){
   }
 }
 
-/* loadChapterAt: identical to previous logic (keeps performance) */
+/* load a chapter by index (lazy; inlines resources) */
 async function loadChapterAt(idx){
   if(!currentZip || !chaptersMeta[idx]) return;
   const placeholder = viewer.querySelector('.chapter-placeholder[data-idx="'+idx+'"]');
@@ -506,7 +484,7 @@ async function loadChapterAt(idx){
     const div = document.createElement('div'); div.className = 'chapter'; div.dataset.idx = idx;
     div.innerHTML = `<div class="chapter-title">${escapeHtml(res.title)}</div><div class="chapter-body">${res.html}</div>`;
     placeholder.replaceWith(div);
-    setTimeout(()=> div.classList.add('visible'), 90);
+    setTimeout(()=> div.classList.add('visible'), 80);
     revealParagraphsIn(div);
   }catch(e){
     console.error('Chapter load failed', e);
@@ -514,35 +492,48 @@ async function loadChapterAt(idx){
   }
 }
 
-/* helper: reveal paragraphs */
-function revealParagraphsIn(el){
-  const ps = el.querySelectorAll('p');
-  ps.forEach((p,i)=> setTimeout(()=> p.classList.add('visible'), 100 + i*55));
+/* reveal paragraphs */
+function revealParagraphsIn(chEl){
+  const ps = chEl.querySelectorAll('p');
+  ps.forEach((p,i)=> setTimeout(()=> p.classList.add('visible'), 90 + i*55));
 }
 
-/* scrolling, progress, navigation (unchanged behavior) */
+/* navigation and progress */
 async function scrollToChapter(idx, smooth=true){
   const el = viewer.querySelector('.chapter[data-idx="'+idx+'"], .chapter-placeholder[data-idx="'+idx+'"]');
   if(el) el.scrollIntoView({behavior: smooth ? 'smooth' : 'auto', block:'start'});
   currentChapterIndex = idx;
-  if(currentSeries){ currentSeries.lastIndex = currentChapterIndex; putObj(currentSeries); }
+  if(currentSeries){ currentSeries.lastIndex = currentChapterIndex; await putObj(currentSeries); }
   updateProgressBar();
+  progressRange.value = currentChapterIndex;
+  progressLabel.textContent = `Chapter ${currentChapterIndex + 1} / ${chaptersMeta.length}`;
 }
 function updateCurrentByScroll(){
   const rect = viewer.getBoundingClientRect();
   const chapters = Array.from(viewer.querySelectorAll('.chapter, .chapter-placeholder'));
   let best = {idx:0, vis:0};
   chapters.forEach((ch)=>{ const r = ch.getBoundingClientRect(); const vis = Math.max(0, Math.min(r.bottom, rect.bottom) - Math.max(r.top, rect.top)); if(vis > best.vis){ best = {idx: Number(ch.dataset.idx), vis}; } });
-  if(best.idx !== currentChapterIndex){ currentChapterIndex = best.idx; if(currentSeries){ currentSeries.lastIndex = currentChapterIndex; putObj(currentSeries); } }
+  if(best.idx !== currentChapterIndex){
+    currentChapterIndex = best.idx;
+    if(currentSeries){ currentSeries.lastIndex = currentChapterIndex; putObj(currentSeries); }
+    progressRange.value = currentChapterIndex;
+    progressLabel.textContent = `Chapter ${currentChapterIndex + 1} / ${chaptersMeta.length}`;
+  }
   updateProgressBar();
 }
-function updateProgressBar(){ const total = chaptersMeta.length || 1; const pct = Math.round(((currentChapterIndex+1) / total) * 100); progressFill.style.height = pct + '%'; }
-function revealParagraphsIn(el){ const ps = el.querySelectorAll('p'); ps.forEach((p,i)=> setTimeout(()=> p.classList.add('visible'), 100 + i*55)); }
+function updateProgressBar(){
+  const total = Math.max(1, chaptersMeta.length);
+  const pct = Math.round(((currentChapterIndex+1) / total) * 100);
+  progressFill.style.height = pct + '%';
+}
 
-/* navigation bindings */
+/* prev/next + fog */
 document.getElementById('nextBtn').addEventListener('click', ()=>{ if(currentChapterIndex < chaptersMeta.length -1) playFog(()=> scrollToChapter(currentChapterIndex+1)); });
 document.getElementById('prevBtn').addEventListener('click', ()=>{ if(currentChapterIndex > 0) playFog(()=> scrollToChapter(currentChapterIndex-1)); });
-function playFog(action){ fog.style.opacity = 1; setTimeout(()=>{ try{ action(); }catch(e){} setTimeout(()=> fog.style.opacity = 0, 360); }, 180); }
+function playFog(action){
+  fog.style.opacity = 1;
+  setTimeout(()=>{ try{ action(); }catch(e){} setTimeout(()=> fog.style.opacity = 0, 360); }, 160);
+}
 
 /* keyboard nav */
 document.addEventListener('keydown', (e)=>{
@@ -555,7 +546,11 @@ document.addEventListener('keydown', (e)=>{
   else if(e.code === 'ShiftRight' || e.code === 'ArrowUp'){ e.preventDefault(); viewer.scrollBy({ top: -360, behavior: 'smooth' }); }
 });
 
-/* download current EPUB */
+/* progress range interaction */
+progressRange.addEventListener('input', (e)=>{ const idx = Number(e.target.value); progressLabel.textContent = `Chapter ${idx+1} / ${chaptersMeta.length}`; });
+progressRange.addEventListener('change', (e)=>{ scrollToChapter(Number(e.target.value)); });
+
+/* download current epub */
 downloadEpubBtn.addEventListener('click', async ()=>{
   if(!currentSeries) return alert('Open a book first');
   const s = await getById(currentSeries.id);
@@ -564,10 +559,10 @@ downloadEpubBtn.addEventListener('click', async ()=>{
   downloadBlob(blob, (s.title || 'book') + '.epub');
 });
 
-/* fullscreen toggle */
+/* toggle fullscreen & hide sidebar */
 toggleFullscreenBtn.addEventListener('click', ()=>{ 
   if(!document.fullscreenElement){ document.documentElement.requestFullscreen?.().catch(()=>{ document.body.classList.toggle('fullscreen'); }); }
-  else { document.exitFullscreen?.().catch(()=>{ document.body.classList.remove('fullscreen'); }); }
+  else document.exitFullscreen?.();
 });
 document.addEventListener('fullscreenchange', ()=>{ document.body.classList.toggle('fullscreen', !!document.fullscreenElement); });
 
@@ -581,15 +576,15 @@ downloadAllBtn.addEventListener('click', async ()=>{
   downloadBlob(blob, 'comick_library.zip');
 });
 
-/* go back library */
-gotoHome.addEventListener('click', ()=>{ readerWrap.style.display='none'; homepageView.style.display='block'; viewer.innerHTML=''; chaptersMeta=[]; if(observer) observer.disconnect(); currentZip=null; currentSeries=null; renderLibrary(); });
+/* goto library */
+gotoHome.addEventListener('click', ()=>{ readerWrap.style.display='none'; homepageView.style.display='block'; viewer.innerHTML=''; chaptersMeta=[]; if(observer) observer.disconnect(); currentZip=null; currentSeries=null; renderLibrary(); progressTop.style.display='none'; document.getElementById('sidebar').style.transform='translateX(0)'; });
 
-/* right-click delete handled in tiles creation */
+/* right-click delete handled in tile creation */
 
 /* cursor glow */
 document.addEventListener('mousemove', e => { cursorGlow.style.left = e.clientX + 'px'; cursorGlow.style.top = e.clientY + 'px'; });
 
-/* helpers */
+/* tiny helpers */
 function escapeHtml(s){ return (''+s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function throttle(fn, wait){ let t=null; return (...a)=>{ if(t) return; t=setTimeout(()=>{ t=null; fn(...a); }, wait); }; }
 
