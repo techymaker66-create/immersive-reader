@@ -5,22 +5,27 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Lord of Mysteries - Comick Reader</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
-<!-- Added JSZip for EPUB.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://unpkg.com/epubjs/dist/epub.min.js"></script>
 <style>
-:root{--bg:#0d0d0f;--panel:#121216;--muted:#9b9b9b;--accent:#f5f5dc}
+:root{--bg:#0d0d0f;--panel:#121216;--muted:#9b9b9b;--accent:#f5f5dc;}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;font-family:'Playfair Display',serif;background:var(--bg);color:var(--accent);}
 #app{display:flex;min-height:100vh}
-#sidebar{width:320px;padding:28px;background:linear-gradient(180deg,#0b0b0d,#0f0f12);border-right:1px solid rgba(255,255,255,0.03)}
-#main{flex:1;padding:28px;display:flex;flex-direction:column;align-items:center}
-h1{margin:0 0 12px 0;font-size:20px;letter-spacing:1px}.controls{margin:12px 0 22px 0}.add-btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 12px;border-radius:8px;color:var(--accent);cursor:pointer;transition:all .18s ease}.add-btn:hover{border-color:var(--accent)}
-.tiles{display:flex;flex-wrap:wrap;gap:18px}
-.tile{width:160px;height:240px;border-radius:10px;overflow:hidden;position:relative;background:#18181a;box-shadow:0 6px 18px rgba(0,0,0,0.6);cursor:pointer;transition:transform .25s,box-shadow .25s}
+#sidebar{width:300px;padding:20px;background:linear-gradient(180deg,#0b0b0d,#0f0f12);border-right:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;}
+#main{flex:1;padding:20px;display:flex;flex-direction:column;align-items:center}
+h1{margin:0 0 12px 0;font-size:22px;letter-spacing:1px}
+.controls{display:flex;flex-direction:column;gap:12px;margin-bottom:20px}
+.add-btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:10px 16px;border-radius:8px;color:var(--accent);cursor:pointer;transition:all .18s ease;text-align:left}
+.add-btn:hover{border-color:var(--accent)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:18px;width:100%}
+.tile{width:140px;height:220px;border-radius:10px;overflow:hidden;position:relative;background:#18181a;box-shadow:0 6px 18px rgba(0,0,0,0.6);cursor:pointer;transition:transform .25s,box-shadow .25s}
 .tile img{width:100%;height:100%;object-fit:cover}
-.tile:hover{transform:translateY(-6px) scale(1.02);box-shadow:0 12px 30px rgba(0,0,0,0.7)}
-.tile .meta{position:absolute;left:0;right:0;bottom:0;padding:10px;background:linear-gradient(180deg,transparent,rgba(0,0,0,0.6));display:flex;justify-content:space-between;align-items:center}.tile .meta .title{font-size:13px}.tile .meta .resume{font-size:12px;color:var(--muted)}
+.tile:hover{transform:translateY(-4px) scale(1.02);box-shadow:0 10px 28px rgba(0,0,0,0.7)}
+.tile .meta{position:absolute;left:0;right:0;bottom:0;padding:6px;background:linear-gradient(180deg,transparent,rgba(0,0,0,0.6));display:flex;justify-content:space-between;align-items:center}
+.tile .meta .title{font-size:13px;line-height:1.2}
+.tile .meta .resume{font-size:11px;color:var(--muted)}
+.tile .delete-btn{position:absolute;top:6px;right:6px;background:rgba(255,0,0,0.7);border:none;color:#fff;border-radius:50%;width:20px;height:20px;font-size:14px;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center}
 #readerWrap{display:none;flex-direction:column;align-items:center;position:relative;width:100%;height:100vh}#readerHeader{width:100%;display:flex;justify-content:space-between;align-items:center;padding:22px 40px;position:fixed;top:0;left:0;z-index:50;background:linear-gradient(180deg,rgba(10,10,10,0.9),transparent);backdrop-filter:blur(2px)}#readerHeader h2{margin:0;font-size:18px}#viewerContainer{width:820px;max-width:92%;margin-top:98px;margin-bottom:80px;position:relative}#viewer{background:rgba(0,0,0,0.35);padding:36px 48px;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,0.7);max-height:74vh;overflow:auto}
 #viewer p{opacity:0;margin:0 0 1.15em 0;line-height:1.8;font-size:18px}#viewer p.visible{opacity:1;transition:opacity .8s ease}#viewer .dropcap{float:left;font-size:64px;line-height:56px;padding-right:12px;padding-top:8px;color:var(--accent)}
 #progressBar{position:fixed;right:20px;top:20px;width:10px;height:60vh;background:rgba(255,255,255,0.03);border-radius:20px;overflow:hidden}#progressFill{width:100%;height:0;background:linear-gradient(180deg,var(--accent),#d4d4b8)}
@@ -45,7 +50,7 @@ h1{margin:0 0 12px 0;font-size:20px;letter-spacing:1px}.controls{margin:12px 0 2
 <div id="homepageView">
 <div style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
 <h2 style="margin:0">Your Library</h2>
-<div style="color:var(--muted);font-size:13px">Tap a cover to open • Hover to resume</div>
+<div style="color:var(--muted);font-size:13px">Tap a cover to open • Hover to resume • Delete ×</div>
 </div>
 <div class="tiles" id="tiles"></div>
 </div>
@@ -79,7 +84,7 @@ const statusMsg=document.getElementById('statusMsg');
 async function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,1);req.onupgradeneeded=e=>{db=e.target.result;db.createObjectStore(STORE_NAME,{keyPath:'id'})};req.onsuccess=e=>{db=e.target.result;resolve(db)};req.onerror=e=>reject(e);});}
 async function getAllSeries(){if(!db) await openDB();return new Promise(resolve=>{const tx=db.transaction(STORE_NAME,'readonly');const store=tx.objectStore(STORE_NAME);const req=store.getAll();req.onsuccess=()=>resolve(req.result);});}
 async function saveSeries(series){if(!db) await openDB();return new Promise(resolve=>{const tx=db.transaction(STORE_NAME,'readwrite');const store=tx.objectStore(STORE_NAME);const req=store.put(series);req.onsuccess=()=>resolve();});}
-async function removeSeries(seriesId){if(!db) await openDB();const tx=db.transaction(STORE_NAME,'readwrite');tx.objectStore(STORE_NAME).delete(seriesId);renderLibrary();}
+async function deleteSeries(id){if(!db) await openDB();const tx=db.transaction(STORE_NAME,'readwrite');tx.objectStore(STORE_NAME).delete(id);renderLibrary();}
 
 // --- Library Rendering ---
 async function renderLibrary(){
@@ -90,7 +95,7 @@ seriesList.forEach(s=>{
 const div=document.createElement('div');
 div.className='tile';
 const imgSrc=s.cover?s.cover:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJYAAACWCAYAAAA8AXHiAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEwAACxMBAJqcGAAAB1ZJREFUeJzt3U1OwkAUgOE/v+prwYxQG0wM+mG3xHILi7oKXtxI+md0McwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPhzpkd+HVfL7Uqf1kEpmK0vxMmvwZk6S9tVkmO+bbhlhXTvt0fJOfyzeCz5JX9juYkY9Fb+Hpm5QZqkvlO/3UanLz2GkVkNmbpJrf1R18rjk1yRdXeVzv5sv//3/47Nvl33X/wz0pp/Z+T3l7X7SX6e9HktX/SlZ3IemP8u3Vt2QAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIC/DwwAyHqxYmYsCxoAAAAASUVORK5CYII=';
-div.innerHTML=`<img src='${imgSrc}'><div class='meta'><span class='title'>${s.title}</span><span class='resume'>${s.lastCfi?'Resume':''}</span></div>`;
+div.innerHTML=`<img src='${imgSrc}'><div class='meta'><span class='title'>${s.title}</span><span class='resume'>${s.lastCfi?'Resume':''}</span></div><button class='delete-btn' onclick='deleteSeries("${s.id}")'>×</button>`;
 div.onclick=()=>openSeries(s);
 tiles.appendChild(div);
 });
@@ -117,7 +122,8 @@ document.getElementById('homepageView').style.display='none';
 document.getElementById('readerWrap').style.display='flex';
 currentSeries=s;
 document.getElementById('seriesTitle').textContent=s.title;
-book=ePub(s.epub);
+const blob=new Blob([s.epub],{type:'application/epub+zip'});
+book=ePub(blob);
 rendition=book.renderTo('viewer',{width:'100%',height:'100%'});
 await book.ready;
 await book.locations.generate(1000);
@@ -143,10 +149,8 @@ renderLibrary();
 // --- Keyboard ---
 document.addEventListener('keydown',e=>{
 if(!rendition)return;
-if(e.code==='ArrowRight')rendition.next();
-if(e.code==='ArrowLeft')rendition.prev();
-if(e.code==='Space'||e.code==='ArrowDown')rendition.next();
-if(e.code==='ShiftRight')rendition.prev();
+if(e.code==='ArrowRight'||e.code==='Space'||e.code==='ArrowDown')rendition.next();
+if(e.code==='ArrowLeft'||e.code==='ShiftRight')rendition.prev();
 });
 
 // --- Init ---
