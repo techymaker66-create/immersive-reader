@@ -1,167 +1,161 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Comick-style Immersive Reader</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/epubjs/dist/epub.min.js"></script>
-<style>
-:root{--bg:#0d0d0f;--accent:#f5f5dc;--muted:#9b9b9b;}
-*{box-sizing:border-box}
-html,body{margin:0;height:100%;font-family:'Playfair Display',serif;background:var(--bg);color:var(--accent);}
-#app{display:flex;min-height:100vh;}
-#sidebar{width:280px;padding:20px;background:linear-gradient(180deg,#0b0b0d,#0f0f12);border-right:1px solid rgba(255,255,255,0.05);}
-#main{flex:1;padding:20px;display:flex;flex-direction:column;}
-h1{margin-top:0;font-size:20px;}
-.controls{margin-bottom:20px;}
-.add-btn{background:transparent;border:1px solid rgba(255,255,255,0.1);padding:8px 12px;border-radius:6px;color:var(--accent);cursor:pointer;display:inline-block;margin-bottom:5px;}
-.add-btn:hover{border-color:var(--accent);}
-.tiles{display:flex;flex-wrap:wrap;gap:12px;}
-.tile{width:140px;height:220px;background:#18181a;border-radius:8px;overflow:hidden;position:relative;cursor:pointer;transition:0.2s;}
-.tile:hover{transform:scale(1.03);}
-.tile img{width:100%;height:100%;object-fit:cover;}
-.tile .meta{position:absolute;bottom:0;left:0;right:0;padding:6px;background:rgba(0,0,0,0.6);color:var(--accent);font-size:12px;}
-#readerWrap{display:none;flex-direction:column;align-items:center;width:100%;height:100vh;}
-#readerHeader{width:100%;display:flex;justify-content:space-between;align-items:center;padding:16px 24px;background:rgba(0,0,0,0.85);}
-#viewerContainer{width:80%;max-width:800px;margin-top:60px;margin-bottom:40px;}
-#viewer{width:100%;height:70vh;overflow:auto;background:rgba(0,0,0,0.3);padding:24px;border-radius:12px;}
-.nav{display:flex;justify-content:space-between;width:80%;max-width:800px;margin-top:10px;}
-.nav button{padding:10px 16px;border:none;border-radius:6px;background:#222;color:var(--accent);cursor:pointer;}
-.nav button:hover{background:#333;}
-@media(max-width:800px){#sidebar{display:none}#viewerContainer{width:95%;}}
-</style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NightLit Reader</title>
+
+<!-- Tailwind CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- React + ReactDOM CDN -->
+<script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+<!-- Babel CDN for JSX -->
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<!-- epub.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
+
 </head>
-<body>
-<div id="app">
-<aside id="sidebar">
-<h1>Comick Library</h1>
-<div class="controls">
-<label class="add-btn">Add EPUB<input id="epubInput" type="file" accept=".epub" style="display:none"></label><br>
-<label class="add-btn">Upload Cover<input id="coverInput" type="file" accept="image/*" style="display:none"></label><br>
-<button id="addSeriesBtn" class="add-btn">Add Series</button>
-</div>
-<div id="statusMsg" style="font-size:13px;color:var(--muted)">Ready</div>
-</aside>
+<body class="bg-[#07111a] text-[#e6eef8]">
 
-<main id="main">
-<div id="homepageView">
-<h2>Your Library</h2>
-<div class="tiles" id="tiles"></div>
-</div>
+<div id="root" class="min-h-screen"></div>
 
-<div id="readerWrap">
-<div id="readerHeader">
-<h2 id="seriesTitle">Series</h2>
-<button id="gotoHome">Library</button>
-</div>
-<div id="viewerContainer">
-<div id="viewer"></div>
-</div>
-<div class="nav">
-<button id="prevBtn">⟵ Prev</button>
-<button id="nextBtn">Next ⟶</button>
-</div>
-</div>
-</main>
-</div>
+<script type="text/babel">
 
-<script>
-const DB_NAME='comickDB',STORE_NAME='seriesStore';
-let db,currentBook,currentSeries,rendition,tempEPUB=null,tempCover=null;
+const { useState, useEffect, useRef } = React;
 
-// IndexedDB
-function openDB(){
-  return new Promise((resolve,reject)=>{
-    const req=indexedDB.open(DB_NAME,1);
-    req.onupgradeneeded=e=>{db=e.target.result;db.createObjectStore(STORE_NAME,{keyPath:'id'});};
-    req.onsuccess=e=>{db=e.target.result;resolve(db);};
-    req.onerror=e=>reject(e);
-  });
+// Helper: lightweight ID
+function bookId(name, size) {
+  const s = `${name}:${size}`;
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h << 5) - h + s.charCodeAt(i);
+  return `b_${Math.abs(h)}`;
 }
 
-async function getSeries(){
-  if(!db) await openDB();
-  return new Promise(res=>{
-    const tx=db.transaction(STORE_NAME,'readonly');
-    const store=tx.objectStore(STORE_NAME);
-    const r=store.getAll();
-    r.onsuccess=()=>res(r.result);
+const STORAGE_KEY = "webnovel_reader_library_v1";
+
+function App() {
+  const [library, setLibrary] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]"); }
+    catch(e){return [];}
   });
-}
+  const [activeBookId, setActiveBookId] = useState(null);
+  const [bookObj,setBookObj]=useState(null);
+  const [rendition,setRendition]=useState(null);
+  const [isReading,setIsReading]=useState(false);
+  const [progress,setProgress]=useState(0);
+  const [toc,setToc]=useState([]);
+  const viewerRef = useRef(null);
+  const [showLibrary,setShowLibrary]=useState(true);
 
-async function saveSeries(series){
-  if(!db) await openDB();
-  return new Promise(res=>{
-    const tx=db.transaction(STORE_NAME,'readwrite');
-    tx.objectStore(STORE_NAME).put(series).onsuccess=()=>{res();}
-  });
-}
+  useEffect(()=>{localStorage.setItem(STORAGE_KEY,JSON.stringify(library));},[library]);
 
-async function deleteSeries(id){
-  if(!db) await openDB();
-  return new Promise(res=>{
-    const tx=db.transaction(STORE_NAME,'readwrite');
-    tx.objectStore(STORE_NAME).delete(id).onsuccess=()=>res();
-  });
-}
+  async function handleEpubUpload(e){
+    const files = e.target.files;
+    if(!files||files.length===0) return;
+    for(const file of files){
+      const id = bookId(file.name,file.size);
+      const arrayBuffer = await file.arrayBuffer();
+      const blob = new Blob([arrayBuffer],{type:"application/epub+zip"});
+      const url = URL.createObjectURL(blob);
 
-// UI
-const tiles=document.getElementById('tiles'),
-      epubInput=document.getElementById('epubInput'),
-      coverInput=document.getElementById('coverInput'),
-      statusMsg=document.getElementById('statusMsg');
+      const b = ePub(url);
+      await b.ready;
+      const metadata = await b.loaded.metadata;
+      const title = (metadata && metadata.title)?metadata.title:file.name.replace(/\.epub$/i,"");
 
-epubInput.addEventListener('change',e=>{tempEPUB=e.target.files[0];});
-coverInput.addEventListener('change',e=>{tempCover=e.target.files[0];});
+      let coverDataUrl=null;
+      try{ const cover=b.coverUrl(); if(cover){ coverDataUrl=cover; } } catch(e){}
 
-document.getElementById('addSeriesBtn').addEventListener('click',()=>{
-  if(!tempEPUB) return alert('Select an EPUB file first');
-  const id=Date.now().toString(),title=tempEPUB.name;
-  saveSeries({id,title,epubBlob:tempEPUB,coverBlob:tempCover||null}).then(()=>{
-    tempEPUB=null; tempCover=null; epubInput.value=''; coverInput.value='';
-    renderTiles();
-  });
-});
+      const newItem = {id,title,fileName:file.name,size:file.size,url,cover:coverDataUrl,lastCfi:null,percent:0,addedAt:Date.now()};
+      setLibrary(prev=>[newItem,...prev.filter(p=>p.id!==id)]);
+      try{ b.destroy && b.destroy(); }catch(e){}
+    }
+    e.target.value="";
+  }
 
-function renderTiles(){
-  getSeries().then(list=>{
-    tiles.innerHTML='';
-    list.forEach(series=>{
-      const tile=document.createElement('div');tile.className='tile';
-      const img=document.createElement('img');
-      img.src=series.coverBlob?URL.createObjectURL(series.coverBlob):'https://via.placeholder.com/140x220?text=Cover';
-      tile.appendChild(img);
-      const meta=document.createElement('div');meta.className='meta';meta.textContent=series.title;tile.appendChild(meta);
-      tiles.appendChild(tile);
+  async function openBook(bid){
+    setShowLibrary(false); setActiveBookId(bid);
+    const bookMeta = library.find(x=>x.id===bid);
+    if(!bookMeta) return;
 
-      tile.addEventListener('click',()=>openBook(series));
-      tile.addEventListener('contextmenu',e=>{e.preventDefault();
-        if(confirm('Delete "'+series.title+'" from library?')){deleteSeries(series.id).then(renderTiles);}
-      });
+    try{ rendition && rendition.destroy(); bookObj && bookObj.destroy && bookObj.destroy(); } catch(e){}
+    const book = ePub(bookMeta.url); setBookObj(book);
+    await book.ready; if(!book.locations||!book.locations.length) await book.locations.generate(1600);
+    const r = book.renderTo(viewerRef.current,{width:"100%",height:"100%",flow:"paginated"});
+    r.themes.default({body:{background:"#0b1220",color:"#e6eef8",fontFamily:"Inter, ui-sans-serif, system-ui"}});
+    r.on("relocated",loc=>{
+      const cfi=loc.start.cfi;
+      let p=0;
+      try{ if(book.locations && book.locations.length) p=Math.round(book.locations.percentageFromCfi(cfi)*100); } catch(e){p=0;}
+      setProgress(p);
+      setLibrary(prev=>prev.map(it=>it.id===bid?{...it,lastCfi:cfi,percent:p}:it));
     });
-  });
+    r.display(bookMeta.lastCfi||undefined); setRendition(r);
+    const _toc = await book.getToc(); setToc(_toc); setIsReading(true);
+  }
+
+  function closeReader(){ try{rendition&&rendition.destroy();}catch(e){} setRendition(null); setBookObj(null); setActiveBookId(null); setIsReading(false); setShowLibrary(true);}
+  function gotoPrev(){rendition&&rendition.prev();}
+  function gotoNext(){rendition&&rendition.next();}
+  function jumpToCfi(cfi){rendition&&rendition.display(cfi);}
+  function removeBook(id){ const b=library.find(x=>x.id===id); if(b&&b.url) URL.revokeObjectURL(b.url); setLibrary(prev=>prev.filter(x=>x.id!==id)); if(activeBookId===id) closeReader(); }
+
+  return (
+    <div className="p-6 max-w-6xl mx-auto">
+      <header className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-extrabold">NightLit Reader</h1>
+        <label className="px-3 py-1 rounded-md bg-[#0f1724] hover:bg-[#14202b] cursor-pointer text-sm">
+          + Upload EPUB
+          <input accept=".epub" multiple type="file" onChange={handleEpubUpload} className="hidden"/>
+        </label>
+      </header>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <aside className="md:col-span-1 space-y-3">
+          {library.map(b=>(
+            <div key={b.id} className="p-2 rounded-lg bg-[#04111a] hover:scale-[1.01] transition-transform cursor-pointer" onClick={()=>openBook(b.id)}>
+              <div className="font-semibold">{b.title}</div>
+              <div className="text-xs opacity-70">{Math.round(b.percent||0)}%</div>
+            </div>
+          ))}
+          {library.length===0&&<div className="text-sm opacity-60 p-4">No books. Upload an EPUB to begin.</div>}
+        </aside>
+
+        <main className="md:col-span-3">
+          {showLibrary&&<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {library.map(b=>(
+              <div key={b.id} className="p-4 rounded-2xl bg-gradient-to-b from-[#071728] to-[#04111a] hover:scale-[1.01] transition-transform shadow-md">
+                <div className="font-bold">{b.title}</div>
+                <div className="mt-2 text-xs opacity-70">{b.fileName} - {Math.round(b.percent||0)}%</div>
+              </div>
+            ))}
+          </div>}
+
+          {!showLibrary&&(
+            <div className="relative h-[70vh] rounded-2xl bg-[#06121a] p-4 shadow-lg overflow-hidden">
+              <div className="absolute left-3 top-6 flex flex-col items-center gap-2">
+                <button onClick={gotoPrev} className="p-2 rounded bg-[#0f1724] hover:bg-[#14202b]">◀</button>
+                <button onClick={gotoNext} className="p-2 rounded bg-[#0f1724] hover:bg-[#14202b]">▶</button>
+              </div>
+              <div className="absolute top-6 right-6 flex items-center gap-2">
+                <div className="text-sm opacity-70">{progress}%</div>
+                <button onClick={()=>{closeReader(); setShowLibrary(true);}} className="px-2 py-1 rounded bg-[#2a2a35]">Close</button>
+              </div>
+              <div ref={viewerRef} className="h-full w-full rounded-md bg-[#07111a]" />
+            </div>
+          )}
+        </main>
+      </div>
+      <footer className="mt-6 text-xs opacity-60">Private browser reader. Progress saved locally.</footer>
+    </div>
+  );
 }
 
-async function openBook(series){
-  currentSeries=series;
-  document.getElementById('homepageView').style.display='none';
-  document.getElementById('readerWrap').style.display='flex';
-  document.getElementById('seriesTitle').textContent=series.title;
-  const arrayBuffer=await series.epubBlob.arrayBuffer();
-  currentBook=ePub(arrayBuffer);
-  rendition=currentBook.renderTo("viewer",{width:"100%",height:"100%"});
-  rendition.display();
-  document.getElementById('nextBtn').onclick=()=>rendition.next();
-  document.getElementById('prevBtn').onclick=()=>rendition.prev();
-}
-
-document.getElementById('gotoHome').addEventListener('click',()=>{
-  document.getElementById('readerWrap').style.display='none';
-  document.getElementById('homepageView').style.display='block';
-});
-
-renderTiles();
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
 </script>
 </body>
 </html>
