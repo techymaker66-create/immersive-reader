@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Lord of Mysteries - Comick Reader</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+<!-- Added JSZip for EPUB.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://unpkg.com/epubjs/dist/epub.min.js"></script>
 <style>
 :root{--bg:#0d0d0f;--panel:#121216;--muted:#9b9b9b;--accent:#f5f5dc}
@@ -38,7 +40,6 @@ h1{margin:0 0 12px 0;font-size:20px;letter-spacing:1px}.controls{margin:12px 0 2
 <div id="statusMsg" style="color:var(--muted);font-size:13px;margin-top:10px">Ready</div>
 <div style="height:24px"></div>
 <div style="color:var(--muted);font-size:13px">Series stored in browser via IndexedDB.</div>
-<button id="clearLibrary" class="add-btn" style="margin-top:10px;">Clear Library</button>
 </aside>
 <main id="main">
 <div id="homepageView">
@@ -70,130 +71,86 @@ h1{margin:0 0 12px 0;font-size:20px;letter-spacing:1px}.controls{margin:12px 0 2
 <div id="fog"></div>
 <div id="cursorGlow"></div>
 <script>
+// --- IndexedDB ---
 const DB_NAME='comickDB';
 const STORE_NAME='seriesStore';
-let db=null;
-let currentSeries=null;
-let book=null;
-let rendition=null;
-let lastCfi='';
+let db=null,currentSeries=null,book=null,rendition=null;
 const statusMsg=document.getElementById('statusMsg');
+async function openDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,1);req.onupgradeneeded=e=>{db=e.target.result;db.createObjectStore(STORE_NAME,{keyPath:'id'})};req.onsuccess=e=>{db=e.target.result;resolve(db)};req.onerror=e=>reject(e);});}
+async function getAllSeries(){if(!db) await openDB();return new Promise(resolve=>{const tx=db.transaction(STORE_NAME,'readonly');const store=tx.objectStore(STORE_NAME);const req=store.getAll();req.onsuccess=()=>resolve(req.result);});}
+async function saveSeries(series){if(!db) await openDB();return new Promise(resolve=>{const tx=db.transaction(STORE_NAME,'readwrite');const store=tx.objectStore(STORE_NAME);const req=store.put(series);req.onsuccess=()=>resolve();});}
+async function removeSeries(seriesId){if(!db) await openDB();const tx=db.transaction(STORE_NAME,'readwrite');tx.objectStore(STORE_NAME).delete(seriesId);renderLibrary();}
 
-// --- IndexedDB functions ---
-async function openDB(){
-  return new Promise((resolve,reject)=>{
-    const req=indexedDB.open(DB_NAME,1);
-    req.onupgradeneeded=e=>{db=e.target.result;db.createObjectStore(STORE_NAME,{keyPath:'id'})};
-    req.onsuccess=e=>{db=e.target.result;resolve(db)};
-    req.onerror=e=>reject(e);
-  });
-}
-
-async function getAllSeries(){
-  if(!db) await openDB();
-  return new Promise(resolve=>{
-    const tx=db.transaction(STORE_NAME,'readonly');
-    const store=tx.objectStore(STORE_NAME);
-    const req=store.getAll();
-    req.onsuccess=()=>resolve(req.result);
-  });
-}
-
-async function saveSeries(series){
-  if(!db) await openDB();
-  return new Promise(resolve=>{
-    const tx=db.transaction(STORE_NAME,'readwrite');
-    const store=tx.objectStore(STORE_NAME);
-    const req=store.put(series);
-    req.onsuccess=()=>resolve();
-  });
-}
-
-// --- Library rendering ---
+// --- Library Rendering ---
 async function renderLibrary(){
-  const tiles=document.getElementById('tiles');
-  tiles.innerHTML='';
-  const seriesList=await getAllSeries();
-  seriesList.forEach(s=>{
-    const div=document.createElement('div');
-    div.className='tile';
-    div.innerHTML=`<img src='${s.cover}'><div class='meta'><span class='title'>${s.title}</span><span class='resume'>${s.lastCfi?'Resume':''}</span></div>`;
-    div.onclick=()=>openSeries(s);
-    tiles.appendChild(div);
-  });
+const tiles=document.getElementById('tiles');
+tiles.innerHTML='';
+const seriesList=await getAllSeries();
+seriesList.forEach(s=>{
+const div=document.createElement('div');
+div.className='tile';
+const imgSrc=s.cover?s.cover:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJYAAACWCAYAAAA8AXHiAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEwAACxMBAJqcGAAAB1ZJREFUeJzt3U1OwkAUgOE/v+prwYxQG0wM+mG3xHILi7oKXtxI+md0McwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPhzpkd+HVfL7Uqf1kEpmK0vxMmvwZk6S9tVkmO+bbhlhXTvt0fJOfyzeCz5JX9juYkY9Fb+Hpm5QZqkvlO/3UanLz2GkVkNmbpJrf1R18rjk1yRdXeVzv5sv//3/47Nvl33X/wz0pp/Z+T3l7X7SX6e9HktX/SlZ3IemP8u3Vt2QAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIC/DwwAyHqxYmYsCxoAAAAASUVORK5CYII=';
+div.innerHTML=`<img src='${imgSrc}'><div class='meta'><span class='title'>${s.title}</span><span class='resume'>${s.lastCfi?'Resume':''}</span></div>`;
+div.onclick=()=>openSeries(s);
+tiles.appendChild(div);
+});
 }
 
 // --- Add series ---
 document.getElementById('addSeriesBtn').onclick=async()=>{
-  const epubFile=document.getElementById('epubInput').files[0];
-  const coverFile=document.getElementById('coverInput').files[0];
-  if(!epubFile || !coverFile){alert('Select EPUB and Cover');return;}
-  const arr=await epubFile.arrayBuffer();
-  const coverURL=URL.createObjectURL(coverFile);
-  const id=epubFile.name;
-  await saveSeries({id,title:epubFile.name,epub:arr,cover:coverURL,lastCfi:''});
-  renderLibrary();
+const epubFile=document.getElementById('epubInput').files[0];
+const coverFile=document.getElementById('coverInput').files[0];
+if(!epubFile||!coverFile){alert('Select EPUB and Cover');return;}
+const arr=await epubFile.arrayBuffer();
+const coverURL=URL.createObjectURL(coverFile);
+const id=epubFile.name;
+await saveSeries({id,title:epubFile.name,epub:arr,cover:coverURL,lastCfi:''});
+renderLibrary();
 };
 
-// --- Clear library ---
-document.getElementById('clearLibrary').onclick=async()=>{
-  if(!db) await openDB();
-  const tx=db.transaction(STORE_NAME,'readwrite');
-  tx.objectStore(STORE_NAME).clear();
-  renderLibrary();
-};
-
-// --- Cursor glow ---
-const cursorGlow=document.getElementById('cursorGlow');
-document.addEventListener('mousemove',e=>{
-  cursorGlow.style.left=e.clientX+'px';
-  cursorGlow.style.top=e.clientY+'px';
-});
+// --- Cursor Glow ---
+document.addEventListener('mousemove',e=>{const cursorGlow=document.getElementById('cursorGlow');cursorGlow.style.left=e.clientX+'px';cursorGlow.style.top=e.clientY+'px';});
 
 // --- EPUB.js Reader ---
 async function openSeries(s){
-  document.getElementById('homepageView').style.display='none';
-  document.getElementById('readerWrap').style.display='flex';
-  currentSeries=s;
-  document.getElementById('seriesTitle').textContent=s.title;
-  book=ePub(s.epub);
-  rendition=book.renderTo('viewer',{width:'100%',height:'100%'});
-  lastCfi=s.lastCfi||book.locations?book.locations.start:null;
-  await book.ready;
-  await book.locations.generate(1000);
-  rendition.display(lastCfi);
-  updateProgress();
-}
-
-function updateProgress(){
-  rendition.on('relocated',loc=>{
-    const percent=loc.start.percentage*100;
-    document.getElementById('progressFill').style.height=percent+'%';
-    currentSeries.lastCfi=loc.start.cfi;
-    saveSeries(currentSeries);
-  });
+document.getElementById('homepageView').style.display='none';
+document.getElementById('readerWrap').style.display='flex';
+currentSeries=s;
+document.getElementById('seriesTitle').textContent=s.title;
+book=ePub(s.epub);
+rendition=book.renderTo('viewer',{width:'100%',height:'100%'});
+await book.ready;
+await book.locations.generate(1000);
+const startCfi=s.lastCfi||book.locations.start;
+rendition.display(startCfi);
+rendition.on('relocated',loc=>{
+const percent=loc.start.percentage*100;
+document.getElementById('progressFill').style.height=percent+'%';
+currentSeries.lastCfi=loc.start.cfi;
+saveSeries(currentSeries);
+});
 }
 
 // --- Navigation ---
-document.getElementById('nextBtn').onclick=()=>{if(rendition) rendition.next();};
-document.getElementById('prevBtn').onclick=()=>{if(rendition) rendition.prev();};
+document.getElementById('nextBtn').onclick=()=>{if(rendition)rendition.next();};
+document.getElementById('prevBtn').onclick=()=>{if(rendition)rendition.prev();};
 document.getElementById('gotoHome').onclick=()=>{
-  document.getElementById('readerWrap').style.display='none';
-  document.getElementById('homepageView').style.display='block';
-  renderLibrary();
+document.getElementById('readerWrap').style.display='none';
+document.getElementById('homepageView').style.display='block';
+renderLibrary();
 };
 
-// --- Keyboard controls ---
+// --- Keyboard ---
 document.addEventListener('keydown',e=>{
-  if(!rendition) return;
-  if(e.code==='ArrowRight') rendition.next();
-  if(e.code==='ArrowLeft') rendition.prev();
-  if(e.code==='Space' || e.code==='ArrowDown') rendition.next();
-  if(e.code==='ShiftRight') rendition.prev();
+if(!rendition)return;
+if(e.code==='ArrowRight')rendition.next();
+if(e.code==='ArrowLeft')rendition.prev();
+if(e.code==='Space'||e.code==='ArrowDown')rendition.next();
+if(e.code==='ShiftRight')rendition.prev();
 });
 
 // --- Init ---
-(async()=>{await openDB(); renderLibrary();})();
+(async()=>{await openDB();renderLibrary();})();
 </script>
 </body>
 </html>
