@@ -46,7 +46,7 @@ h1{margin:0 0 12px 0;font-size:20px;letter-spacing:1px}
 #readerHeader h2{margin:0;font-size:18px}
 #viewerContainer{width:820px;max-width:92%;margin-top:98px;margin-bottom:80px;position:relative}
 #viewer{background:rgba(0,0,0,0.35);padding:36px 48px;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,0.7);max-height:74vh;overflow:auto}
-#viewer p{line-height:1.8;font-size:18px;opacity:1;margin:0 0 1.15em 0;} /* CHANGED: visible by default */
+#viewer p{line-height:1.8;font-size:18px;opacity:1;margin:0 0 1.15em 0;}
 #viewer .dropcap{float:left;font-size:64px;line-height:56px;padding-right:12px;padding-top:8px;color:var(--accent)}
 
 #progressBar{position:fixed;right:20px;top:20px;width:10px;height:60vh;background:rgba(255,255,255,0.03);border-radius:20px;overflow:hidden}
@@ -378,8 +378,8 @@ async function openSeries(id){
   // initialize book
   try{
     showStatus('Initializing reader...');
-    // Use ePub with blob URL — this is reliable.
-    book = ePub(currentBookBlobUrl);
+    // FIX: Use blobUrl replacement to prevent external fetches!
+    book = ePub({ replacements: 'blobUrl', url: currentBookBlobUrl });
     // render into "viewer" with scrolled flow
     rendition = book.renderTo(viewer, {
       width: '100%',
