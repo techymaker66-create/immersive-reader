@@ -30,10 +30,8 @@ h1{margin:0 0 12px 0;font-size:20px;letter-spacing:1px}.controls{margin:12px 0 2
 <aside id="sidebar">
 <h1>Comick Library</h1>
 <div class="controls">
-<label class="add-btn">Add Series
-<input id="epubInput" type="file" accept=".epub" style="display:none"></label>
-<label class="add-btn">Choose Cover
-<input id="coverInput" type="file" accept="image/*" style="display:none"></label>
+<label class="add-btn">Select EPUB<input id="epubInput" type="file" accept=".epub" style="display:none"></label>
+<label class="add-btn">Select Cover<input id="coverInput" type="file" accept="image/*" style="display:none"></label>
 <button id="addSeriesBtn" class="add-btn">Add Series</button>
 </div>
 <div id="statusMsg" style="color:var(--muted);font-size:13px;margin-top:10px">Ready</div>
@@ -75,6 +73,8 @@ const DB_NAME='comickDB';
 const STORE_NAME='seriesStore';
 let db;
 const statusMsg=document.getElementById('statusMsg');
+let currentBook=null;
+let rendition=null;
 
 async function openDB(){
   return new Promise((resolve,reject)=>{
@@ -86,98 +86,4 @@ async function openDB(){
 }
 
 async function getAllSeries(){
-  if(!db) await openDB();
-  return new Promise(resolve=>{
-    const tx=db.transaction(STORE_NAME,'readonly');
-    const store=tx.objectStore(STORE_NAME);
-    const req=store.getAll();
-    req.onsuccess=()=>resolve(req.result);
-  });
-}
-
-async function saveSeries(series){
-  statusMsg.textContent='Caching EPUB...';
-  if(!db) await openDB();
-  return new Promise(resolve=>{
-    const tx=db.transaction(STORE_NAME,'readwrite');
-    tx.objectStore(STORE_NAME).put(series).onsuccess=()=>{statusMsg.textContent='Ready';resolve()};
-  });
-}
-
-async function migrateFromLocal(){
-  const old=localStorage.getItem('comick_series_v1');
-  if(!old) return;
-  try{
-    const obj=JSON.parse(old);
-    for(const id in obj){ await saveSeries({...obj[id],id}); }
-    localStorage.removeItem('comick_series_v1');
-  }catch(e){console.error(e)}
-}
-
-async function updateTiles(){
-  const tilesDiv=document.getElementById('tiles');
-  tilesDiv.innerHTML='';
-  const seriesList=await getAllSeries();
-  seriesList.forEach(s=>{
-    const tile=document.createElement('div');
-    tile.className='tile';
-    const img=document.createElement('img');
-    img.src=s.coverData;
-    tile.appendChild(img);
-    const meta=document.createElement('div');
-    meta.className='meta';
-    const title=document.createElement('div');
-    title.className='title';
-    title.textContent=s.title;
-    const resume=document.createElement('div');
-    resume.className='resume';
-    resume.textContent=s.lastReadCfi?'Resume':'New';
-    meta.appendChild(title);
-    meta.appendChild(resume);
-    tile.appendChild(meta);
-    tile.addEventListener('click',()=>openSeries(s.id));
-    tilesDiv.appendChild(tile);
-  });
-}
-
-async function addSeries(){
-  const epubFile=document.getElementById('epubInput').files[0];
-  const coverFile=document.getElementById('coverInput').files[0];
-  if(!epubFile){alert('Please select an EPUB');return;}
-  if(!coverFile){alert('Please select a cover');return;}
-  const epubData=await epubFile.arrayBuffer();
-  const coverData=await new Promise(r=>{
-    const reader=new FileReader();
-    reader.onload=e=>r(e.target.result);
-    reader.readAsDataURL(coverFile);
-  });
-  const series={id:'series_'+Date.now(),title:epubFile.name,epubData,coverData,lastReadCfi:null};
-  await saveSeries(series);
-  updateTiles();
-}
-
-document.getElementById('addSeriesBtn').addEventListener('click',addSeries);
-document.getElementById('clearLibrary').addEventListener('click',async()=>{
-  if(!db) await openDB();
-  const tx=db.transaction(STORE_NAME,'readwrite');
-  tx.objectStore(STORE_NAME).clear().onsuccess=()=>{
-    document.getElementById('tiles').innerHTML='';
-    statusMsg.textContent='Library cleared';
-  };
-});
-
-// Cursor glow
-const cursorGlow=document.getElementById('cursorGlow');
-let lastHover=null;
-document.addEventListener('mousemove',e=>{
-  cursorGlow.style.left=e.clientX+'px';
-  cursorGlow.style.top=e.clientY+'px';
-  cursorGlow.style.boxShadow=lastHover?'0 0 42px 16px rgba(245,245,220,0.32)':'0 0 32px 10px rgba(245,245,220,0.22)';
-});
-document.addEventListener('mouseover',e=>{if(e.target.closest('.add-btn,.tile,.nav button')) lastHover=e.target});
-document.addEventListener('mouseout',e=>{if(e.target==lastHover) lastHover=null});
-
-migrateFromLocal().then(updateTiles);
-</script>
-</body>
-</html>
+  if
