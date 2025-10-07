@@ -1,161 +1,103 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Webnovel Reader</title>
-<style>
-body {
-    background: #0f0f0f;
-    color: #eee;
-    font-family: 'Georgia', serif;
-    margin:0; padding:0;
-}
-h1,h2 { text-align:center; }
-#home, #reader { padding: 20px; }
-#bookList { display:flex; flex-wrap:wrap; justify-content:center; }
-.book-item { margin:10px; cursor:pointer; transition: transform 0.2s; text-align:center; }
-.book-item:hover { transform: scale(1.05); }
-.book-item img { width:120px; height:180px; border-radius:10px; }
-#reader { display:none; max-width:800px; margin:auto; }
-#chapterContainer { max-width:700px; margin:auto; line-height:1.8; overflow-y:auto; max-height:70vh; padding-right:10px; }
-#progressBarContainer { width:100%; height:5px; background:#333; margin:10px 0; }
-#progressBar { height:5px; background:#ff9c00; width:0%; }
-button { background:#222; color:#eee; border:none; padding:8px 15px; cursor:pointer; border-radius:5px; margin:5px; }
-button:hover { background:#444; }
-input[type=file] { margin:5px; }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Comick-style Immersive Reader</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/epubjs/dist/epub.min.js"></script>
+  <style>
+    :root{
+      --bg:#0d0d0f; --panel:#121216; --muted:#9b9b9b; --accent:#f5f5dc;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:'Playfair Display',serif;background:var(--bg);color:var(--accent);}
+    #app{display:flex;min-height:100vh}
+    #sidebar{width:320px;padding:28px;background:linear-gradient(180deg,#0b0b0d,#0f0f12);border-right:1px solid rgba(255,255,255,0.03)}
+    #main{flex:1;padding:28px;display:flex;flex-direction:column;align-items:center}
+    h1{margin:0 0 12px 0;font-size:20px;letter-spacing:1px}
+    .controls{margin:12px 0 22px 0}
+    .add-btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 12px;border-radius:8px;color:var(--accent);cursor:pointer;transition:all .18s ease}
+    .add-btn:hover{border-color:var(--accent)}
+    .tiles{display:flex;flex-wrap:wrap;gap:18px}
+    .tile{width:160px;height:240px;border-radius:10px;overflow:hidden;position:relative;background:#18181a;box-shadow:0 6px 18px rgba(0,0,0,0.6);cursor:pointer;transition:transform .25s,box-shadow .25s}
+    .tile img{width:100%;height:100%;object-fit:cover}
+    .tile:hover{transform:translateY(-6px) scale(1.02);box-shadow:0 12px 30px rgba(0,0,0,0.7)}
+    .tile .meta{position:absolute;left:0;right:0;bottom:0;padding:10px;background:linear-gradient(180deg,transparent,rgba(0,0,0,0.6));display:flex;justify-content:space-between;align-items:center}
+    .tile .meta .title{font-size:13px}
+    .tile .meta .resume{font-size:12px;color:var(--muted)}
+    #readerWrap{display:none;flex-direction:column;align-items:center;position:relative;width:100%;height:100vh}
+    #readerHeader{width:100%;display:flex;justify-content:space-between;align-items:center;padding:22px 40px;position:fixed;top:0;left:0;z-index:50;background:linear-gradient(180deg,rgba(10,10,10,0.9),transparent);backdrop-filter:blur(2px)}
+    #readerHeader h2{margin:0;font-size:18px}
+    #viewerContainer{width:820px;max-width:92%;margin-top:98px;margin-bottom:80px;position:relative}
+    #viewer{background:rgba(0,0,0,0.35);padding:36px 48px;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,0.7);max-height:74vh;overflow:auto}
+    #viewer .chapter-title{font-size:20px;margin:0 0 12px 0}
+    #viewer p{opacity:0;margin:0 0 1.15em 0;line-height:1.8;font-size:18px}
+    #viewer p.visible{opacity:1;transition:opacity .8s ease}
+    #viewer .dropcap{float:left;font-size:64px;line-height:56px;padding-right:12px;padding-top:8px;color:var(--accent)}
+    #progressBar{position:fixed;right:20px;top:20px;width:10px;height:60vh;background:rgba(255,255,255,0.03);border-radius:20px;overflow:hidden}
+    #progressFill{width:100%;height:0;background:linear-gradient(180deg,var(--accent),#d4d4b8)}
+    .nav{position:fixed;left:0;right:0;bottom:24px;display:flex;justify-content:space-between;padding:0 40px;pointer-events:none}
+    .nav button{pointer-events:auto;background:linear-gradient(145deg,#2a2a2a,#171717);border-radius:28px;padding:14px 22px;border:none;color:var(--accent);font-size:16px;box-shadow:0 8px 22px rgba(0,0,0,0.6);cursor:pointer;transition:transform .18s,box-shadow .18s}
+    .nav button:hover{transform:scale(1.06);box-shadow:0 14px 34px rgba(0,0,0,0.75)}
+    .nav button:active{transform:scale(.96)}
+    #fog{position:fixed;inset:0;background:radial-gradient(circle at 50% 40%,rgba(255,255,255,0.02),rgba(255,255,255,0.01)10%,rgba(0,0,0,0.85)40%);pointer-events:none;opacity:0;transition:opacity .6s;z-index:90}
+    #cursorGlow{position:fixed;width:22px;height:22px;border-radius:50%;pointer-events:none;mix-blend-mode:screen;box-shadow:0 0 32px 10px rgba(245,245,220,0.22);transform:translate(-50%,-50%);z-index:200;transition:all .18s ease}
+    @media(max-width:900px){#sidebar{display:none}#viewer{padding:22px}}
+  </style>
 </head>
 <body>
-<div id="home">
-    <h1>📖 My Webnovels</h1>
-    <input type="file" id="epubInput" accept=".epub">
-    <input type="file" id="coverInput" accept="image/*">
-    <button id="addBook">Add Book</button>
-    <div id="bookList"></div>
-</div>
-
-<div id="reader">
-    <button id="backHome">← Back</button>
-    <h2 id="bookTitle"></h2>
-    <div id="progressBarContainer"><div id="progressBar"></div></div>
-    <div id="chapterContainer"></div>
-    <div style="text-align:center; margin-top:10px;">
-        <button id="prevChapter">◀ Prev</button>
-        <button id="nextChapter">Next ▶</button>
-    </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
-<script>
-let db;
-let currentBookId = null;
-let bookList = [];
-let bookRendition, currentChapter = 0;
-
-const homeDiv = document.getElementById('home');
-const readerDiv = document.getElementById('reader');
-const bookListDiv = document.getElementById('bookList');
-const epubInput = document.getElementById('epubInput');
-const coverInput = document.getElementById('coverInput');
-const addBookBtn = document.getElementById('addBook');
-const bookTitle = document.getElementById('bookTitle');
-const chapterContainer = document.getElementById('chapterContainer');
-const progressBar = document.getElementById('progressBar');
-const backHome = document.getElementById('backHome');
-const prevChapterBtn = document.getElementById('prevChapter');
-const nextChapterBtn = document.getElementById('nextChapter');
-
-function openDB() {
-    const request = indexedDB.open("WebnovelDB", 1);
-    request.onupgradeneeded = function(e) {
-        db = e.target.result;
-        db.createObjectStore("books", { keyPath:"id", autoIncrement:true });
-    };
-    request.onsuccess = function(e) {
-        db = e.target.result;
-        loadBooks();
-    };
-    request.onerror = function(e) { console.error("DB error", e); }
-}
-
-function saveBook(epubData, coverURL, title) {
-    const tx = db.transaction("books","readwrite");
-    const store = tx.objectStore("books");
-    store.add({title, epubData, coverURL, progress:0});
-    tx.oncomplete = loadBooks;
-}
-
-function loadBooks() {
-    const tx = db.transaction("books","readonly");
-    const store = tx.objectStore("books");
-    const req = store.getAll();
-    req.onsuccess = function(e){
-        bookList = e.target.result;
-        renderBooks();
-    };
-}
-
-function renderBooks() {
-    bookListDiv.innerHTML = '';
-    bookList.forEach(book => {
-        const div = document.createElement('div');
-        div.className = 'book-item';
-        div.innerHTML = `<img src="${book.coverURL}" alt="${book.title}"><div>${book.title}</div>`;
-        div.onclick = () => openReader(book.id);
-        bookListDiv.appendChild(div);
-    });
-}
-
-addBookBtn.onclick = () => {
-    const epubFile = epubInput.files[0];
-    const coverFile = coverInput.files[0];
-    if(!epubFile || !coverFile) return alert("Select EPUB and cover!");
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const coverURL = URL.createObjectURL(coverFile);
-        saveBook(e.target.result, coverURL, epubFile.name);
-    };
-    reader.readAsArrayBuffer(epubFile);
-}
-
-function openReader(id) {
-    const book = bookList.find(b=>b.id===id);
-    if(!book) return;
-    currentBookId = id;
-    homeDiv.style.display='none';
-    readerDiv.style.display='block';
-    bookTitle.textContent = book.title;
-    chapterContainer.innerHTML = '';
-    currentChapter = book.progress || 0;
-
-    const bookBlob = new Blob([book.epubData], {type:"application/epub+zip"});
-    const bookURL = URL.createObjectURL(bookBlob);
-    const epub = ePub(bookURL);
-    bookRendition = epub.renderTo(chapterContainer,{ width:'100%', height:'70vh' });
-    epub.ready.then(()=>{
-        bookRendition.display(currentChapter);
-        updateProgress();
-        bookRendition.on("relocated", loc => updateProgress());
-    });
-}
-
-function updateProgress() {
-    const book = bookList.find(b=>b.id===currentBookId);
-    if(!book) return;
-    let loc = bookRendition.location? bookRendition.location.start.cfi : 0;
-    progressBar.style.width = `${bookRendition.location? bookRendition.location.start.percentage*100 : 0}%`;
-    book.progress = loc;
-    const tx = db.transaction("books","readwrite");
-    tx.objectStore("books").put(book);
-}
-
-backHome.onclick = () => { readerDiv.style.display='none'; homeDiv.style.display='block'; }
-prevChapterBtn.onclick = ()=> bookRendition.prev();
-nextChapterBtn.onclick = ()=> bookRendition.next();
-
-openDB();
-</script>
+  <div id="app">
+    <aside id="sidebar">
+      <h1>Comick Library</h1>
+      <div class="controls">
+        <label class="add-btn">Add Series (EPUB)
+          <input id="epubInput" type="file" accept=".epub" style="display:none">
+        </label>
+        <button id="addSeriesBtn" class="add-btn">Add Series</button>
+      </div>
+      <div id="statusMsg" style="color:var(--muted);font-size:13px;margin-top:10px">Ready</div>
+      <div style="height:24px"></div>
+      <div style="color:var(--muted);font-size:13px">Series stored in browser via IndexedDB.</div>
+    </aside>
+    <main id="main">
+      <div id="homepageView">
+        <div style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+          <h2 style="margin:0">Your Library</h2>
+          <div style="color:var(--muted);font-size:13px">Tap a cover to open • Hover to resume</div>
+        </div>
+        <div class="tiles" id="tiles"></div>
+      </div>
+      <div id="readerWrap">
+        <div id="readerHeader">
+          <h2 id="seriesTitle">Series</h2>
+          <div>
+            <button id="gotoHome" class="add-btn">Library</button>
+            <button id="downloadEpub" class="add-btn">Download EPUB</button>
+          </div>
+        </div>
+        <div id="viewerContainer">
+          <div id="viewer" tabindex="0"></div>
+        </div>
+        <div id="progressBar"><div id="progressFill"></div></div>
+        <div class="nav">
+          <button id="prevBtn">⟵ Prev</button>
+          <button id="nextBtn">Next ⟶</button>
+        </div>
+      </div>
+    </main>
+  </div>
+  <div id="fog"></div>
+  <div id="cursorGlow"></div>
+  <script>
+  const DB_NAME='comickDB';const STORE_NAME='seriesStore';let db;const statusMsg=document.getElementById('statusMsg');
+  function openDB(){return new Promise((res,rej)=>{const req=indexedDB.open(DB_NAME,1);req.onupgradeneeded=e=>{db=e.target.result;db.createObjectStore(STORE_NAME,{keyPath:'id'})};req.onsuccess=e=>{db=e.target.result;res(db)};req.onerror=e=>rej(e)})}
+  async function getAllSeries(){if(!db)await openDB();return new Promise(r=>{const tx=db.transaction(STORE_NAME,'readonly');const s=tx.objectStore(STORE_NAME);const req=s.getAll();req.onsuccess=()=>r(req.result)})}
+  async function saveSeries(series){statusMsg.textContent='Caching EPUB...';if(!db)await openDB();return new Promise(r=>{const tx=db.transaction(STORE_NAME,'readwrite');tx.objectStore(STORE_NAME).put(series).onsuccess=()=>{statusMsg.textContent='Ready';r()}})}
+  function migrateFromLocal(){const old=localStorage.getItem('comick_series_v1');if(!old)return;try{const obj=JSON.parse(old);for(const id in obj){saveSeries({...obj[id],id})}localStorage.removeItem('comick_series_v1')}catch(e){console.error(e)}}
+  const cursorGlow=document.getElementById('cursorGlow');let lastHover=null;document.addEventListener('mousemove',e=>{cursorGlow.style.left=e.clientX+'px';cursorGlow.style.top=e.clientY+'px';if(lastHover&&lastHover.matches(':hover'))cursorGlow.style.boxShadow='0 0 42px 16px rgba(245,245,220,0.32)';else cursorGlow.style.boxShadow='0 0 32px 10px rgba(245,245,220,0.22)'});
+  document.addEventListener('mouseover',e=>{if(e.target.closest('.add-btn,.tile,.nav button'))lastHover=e.target});document.addEventListener('mouseout',e=>{if(e.target==lastHover)lastHover=null});
+  migrateFromLocal();
+  </script>
 </body>
 </html>
