@@ -46,8 +46,7 @@ h1{margin:0 0 12px 0;font-size:20px;letter-spacing:1px}
 #readerHeader h2{margin:0;font-size:18px}
 #viewerContainer{width:820px;max-width:92%;margin-top:98px;margin-bottom:80px;position:relative}
 #viewer{background:rgba(0,0,0,0.35);padding:36px 48px;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,0.7);max-height:74vh;overflow:auto}
-#viewer p{opacity:0;margin:0 0 1.15em 0;line-height:1.8;font-size:18px}
-#viewer p.visible{opacity:1;transition:opacity .8s ease}
+#viewer p{line-height:1.8;font-size:18px;opacity:1;margin:0 0 1.15em 0;} /* CHANGED: visible by default */
 #viewer .dropcap{float:left;font-size:64px;line-height:56px;padding-right:12px;padding-top:8px;color:var(--accent)}
 
 #progressBar{position:fixed;right:20px;top:20px;width:10px;height:60vh;background:rgba(255,255,255,0.03);border-radius:20px;overflow:hidden}
@@ -409,13 +408,12 @@ async function openSeries(id){
     const startCfi = s.lastCfi && s.lastCfi.length ? s.lastCfi : undefined;
     await rendition.display(startCfi);
 
-    // After render, add paragraph fade-in & dropcap
+    // After render, add paragraph dropcap (removed fade-in logic)
     rendition.on('rendered', (section) => {
       try{
         // section.document is the content (scrolled mode uses inlined content)
         const doc = section.document || section.documentElement;
         if(!doc) return;
-        // small timeout to allow DOM to settle
         setTimeout(()=>{
           // add dropcap to first paragraph if present
           const firstP = doc.querySelector('p');
@@ -429,8 +427,6 @@ async function openSeries(id){
               }
             }
           }
-          // make visible paragraphs in viewport
-          revealVisibleParagraphs();
         }, 120);
       }catch(e){
         console.warn('rendered handler error', e);
@@ -464,37 +460,12 @@ async function openSeries(id){
       }catch(e){ console.warn(e); }
     });
 
-    // when user scrolls inside viewer, reveal paragraphs smoothly
-    viewer.addEventListener('scroll', throttle(revealVisibleParagraphs, 120));
-
     showStatus('Ready');
   }catch(err){
     console.error('openSeries error', err);
     alert('Failed to open EPUB. See console for details.');
     showStatus('Ready');
   }
-}
-
-/* Reveal paragraphs that are in view (fade-in effect) */
-function revealVisibleParagraphs(){
-  const ps = viewer.querySelectorAll('p');
-  const rect = viewer.getBoundingClientRect();
-  for(const p of ps){
-    const r = p.getBoundingClientRect();
-    // compare relative to viewer
-    if(r.top < rect.bottom - 40 && r.bottom > rect.top + 20){
-      p.classList.add('visible');
-    }
-  }
-}
-
-/* small throttle util */
-function throttle(fn, wait){
-  let t = null;
-  return function(...a){
-    if(t) return;
-    t = setTimeout(()=>{ t = null; fn(...a); }, wait);
-  };
 }
 
 /* ---------- Navigation controls ---------- */
@@ -559,16 +530,6 @@ downloadEpubBtn.addEventListener('click', async ()=>{
     }else alert('EPUB not available.');
   }catch(e){ console.error(e); alert('Download failed.'); }
 });
-
-/* Reset reader (destroy rendition & revoke blob URL) */
-function resetReader(){
-  try{ if(rendition && rendition.destroy) rendition.destroy(); }catch(e){}
-  rendition = null;
-  book = null;
-  if(currentBookBlobUrl){ URL.revokeObjectURL(currentBookBlobUrl); currentBookBlobUrl = null; }
-  viewer.innerHTML = '';
-  progressFill.style.height = '0%';
-}
 
 /* ---------- Init ---------- */
 (async function init(){
