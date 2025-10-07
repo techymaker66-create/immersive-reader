@@ -1,344 +1,103 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Comick Reader – Immersive Stage</title>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&family=Montserrat:wght@700&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/epubjs/dist/epub.min.js"></script>
-<style>
-:root {
-  --reader-bg: rgba(30,30,40,0.7);
-  --reader-glass: rgba(255,255,255,0.06);
-  --reader-border: linear-gradient(90deg, #7f7fd5, #86a8e7, #91eac9);
-  --reader-shadow: 0 0 60px 15px rgba(100,200,255,0.2);
-  --header-glow: 0 0 25px #7f7fd5;
-  --button-bg: rgba(255,255,255,0.13);
-  --button-hover: rgba(255,255,255,0.24);
-}
-
-body {
-  min-height: 100vh;
-  background: radial-gradient(ellipse at 20% 20%, #232946 60%, #121212 100%);
-  color: #f4f6fb;
-  font-family: 'Poppins', 'Montserrat', sans-serif;
-  overflow-x: hidden;
-}
-
-body::before {
-  /* Animated starfield effect */
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: url('https://raw.githubusercontent.com/techymaker66-create/immersive-reader/main/bg-stars.png');
-  opacity: 0.15;
-  animation: starsmove 80s linear infinite;
-}
-@keyframes starsmove {
-  from {background-position: 0 0;}
-  to {background-position: 1200px 0;}
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding-top: 32px;
-  margin-bottom: 8px;
-}
-
-.logo {
-  width: 44px;
-  height: 44px;
-  background: linear-gradient(135deg, #7f7fd5 60%, #91eac9 100%);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--header-glow);
-  animation: pulseLogo 2s infinite alternate;
-}
-@keyframes pulseLogo {
-  0% { transform: scale(1);}
-  100% { transform: scale(1.08);}
-}
-
-.header h1 {
-  font-size: 2.3rem;
-  font-family: 'Montserrat', 'Poppins', sans-serif;
-  font-weight: 700;
-  text-shadow: 0 2px 12px #7f7fd580;
-  letter-spacing: 1px;
-  background: linear-gradient(90deg,#7f7fd5,#91eac9);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin: 0;
-}
-
-.container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  min-height: calc(100vh - 120px);
-  position: relative;
-  z-index: 2;
-}
-
-#uploadBtn {
-  margin-top: 20px;
-  background: var(--button-bg);
-  border: none;
-  color: #f4f6fb;
-  padding: 14px 38px;
-  border-radius: 18px;
-  font-size: 1.1rem;
-  font-family: 'Poppins',sans-serif;
-  box-shadow: 0 1px 16px rgba(130,180,255,0.10);
-  cursor: pointer;
-  transition: background 0.3s, box-shadow 0.3s, transform 0.2s;
-  position: relative;
-  outline: none;
-  backdrop-filter: blur(12px);
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-#uploadBtn:hover {
-  background: var(--button-hover);
-  box-shadow: 0 2px 28px 0 rgba(130,180,255,0.21);
-  transform: translateY(-2px) scale(1.08);
-}
-#uploadBtn .icon {
-  font-size: 1.5em;
-  filter: drop-shadow(0 0 6px #7f7fd5);
-}
-
-#uploadBtn[dragover] {
-  background: linear-gradient(90deg,#7f7fd5,#91eac9);
-  color: #232946;
-  box-shadow: 0 2px 30px 0 #7f7fd5a0;
-  transform: scale(1.12);
-}
-
-#uploadTooltip {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translate(-50%,12px);
-  background: rgba(30,30,40,0.96);
-  color: #b6cfff;
-  padding: 7px 16px;
-  border-radius: 8px;
-  font-size: 0.88rem;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s;
-  z-index: 10;
-  box-shadow: 0 1px 10px #7f7fd5a0;
-}
-#uploadBtn:hover ~ #uploadTooltip,
-#uploadBtn:focus ~ #uploadTooltip {
-  opacity: 1;
-}
-
-#reader {
-  width: 85vw;
-  max-width: 650px;
-  height: 70vh;
-  margin: 36px auto 0 auto;
-  border-radius: 26px;
-  overflow: hidden;
-  box-shadow: var(--reader-shadow);
-  background: var(--reader-bg);
-  border: 2.5px solid transparent;
-  background-clip: padding-box;
-  position: relative;
-  transition: box-shadow 0.35s, border 0.35s;
-  border-image: var(--reader-border) 1;
-  border-image-slice: 1;
-  backdrop-filter: blur(16px) brightness(1.05);
-  animation: readerGlow 2s infinite alternate;
-}
-@keyframes readerGlow {
-  0% { box-shadow: var(--reader-shadow);}
-  100% { box-shadow: 0 0 90px 25px #86a8e733;}
-}
-
-/* Custom scrollbar for reader */
-#reader ::-webkit-scrollbar {
-  width: 8px;
-  background: transparent;
-}
-#reader ::-webkit-scrollbar-thumb {
-  background: linear-gradient(90deg,#7f7fd5,#91eac9);
-  border-radius: 6px;
-}
-
-#cursorOrb {
-  position:fixed;top:0;left:0;width:30px;height:30px;
-  border-radius:50%;
-  pointer-events:none;
-  transform:translate(-50%,-50%);
-  background:radial-gradient(circle,rgba(200,220,255,0.93),rgba(130,180,255,0.09));
-  box-shadow:0 0 40px 12px #7f7fd5a0;
-  transition:transform 0.19s cubic-bezier(.45,.8,.55,1), box-shadow 0.22s cubic-bezier(.45,.8,.55,1);
-  z-index:9999;
-  mix-blend-mode: lighten;
-}
-
-#uploadBtn:hover ~ #cursorOrb {
-  transform:translate(-50%,-50%) scale(1.5);
-  box-shadow:0 0 50px 18px #7f7fd5f0;
-}
-
-/* Responsive adjustments */
-@media (max-width: 800px) {
-  #reader { width: 98vw; height: 60vh; }
-  .header h1 { font-size: 1.2rem; }
-}
-@media (max-width:500px) {
-  .header h1 { font-size: 1rem; }
-  #reader { max-width: 99vw; height: 52vh;}
-  #uploadBtn { padding:10px 20px; font-size:1em;}
-}
-
-/* Light/dark mode toggle */
-#modeToggle {
-  position: absolute;
-  top: 26px;
-  right: 32px;
-  background: var(--button-bg);
-  color: #f4f6fb;
-  border: none;
-  border-radius: 50%;
-  width: 42px; height: 42px;
-  cursor: pointer;
-  font-size: 1.3em;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 1px 8px #7f7fd580;
-  transition: background 0.3s, transform 0.2s;
-}
-#modeToggle:hover {
-  background: var(--button-hover);
-  transform: scale(1.13);
-}
-
-/* Light mode styles */
-body.light {
-  background: radial-gradient(ellipse at 50% 20%, #f3f6fd 60%, #e0e7ff 100%);
-  color: #232946;
-}
-body.light #reader {
-  background: rgba(255,255,255,0.89);
-  box-shadow: 0 0 60px 18px #91eac980;
-  border-image: linear-gradient(90deg, #86a8e7, #7f7fd5, #232946) 1;
-}
-body.light #uploadBtn, body.light #modeToggle {
-  background: rgba(40,60,130,0.11);
-  color: #232946;
-}
-body.light #uploadBtn:hover, body.light #modeToggle:hover {
-  background: rgba(40,60,130,0.19);
-  color: #7f7fd5;
-}
-
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Comick-style Immersive Reader</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/epubjs/dist/epub.min.js"></script>
+  <style>
+    :root{
+      --bg:#0d0d0f; --panel:#121216; --muted:#9b9b9b; --accent:#f5f5dc;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:'Playfair Display',serif;background:var(--bg);color:var(--accent);}
+    #app{display:flex;min-height:100vh}
+    #sidebar{width:320px;padding:28px;background:linear-gradient(180deg,#0b0b0d,#0f0f12);border-right:1px solid rgba(255,255,255,0.03)}
+    #main{flex:1;padding:28px;display:flex;flex-direction:column;align-items:center}
+    h1{margin:0 0 12px 0;font-size:20px;letter-spacing:1px}
+    .controls{margin:12px 0 22px 0}
+    .add-btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 12px;border-radius:8px;color:var(--accent);cursor:pointer;transition:all .18s ease}
+    .add-btn:hover{border-color:var(--accent)}
+    .tiles{display:flex;flex-wrap:wrap;gap:18px}
+    .tile{width:160px;height:240px;border-radius:10px;overflow:hidden;position:relative;background:#18181a;box-shadow:0 6px 18px rgba(0,0,0,0.6);cursor:pointer;transition:transform .25s,box-shadow .25s}
+    .tile img{width:100%;height:100%;object-fit:cover}
+    .tile:hover{transform:translateY(-6px) scale(1.02);box-shadow:0 12px 30px rgba(0,0,0,0.7)}
+    .tile .meta{position:absolute;left:0;right:0;bottom:0;padding:10px;background:linear-gradient(180deg,transparent,rgba(0,0,0,0.6));display:flex;justify-content:space-between;align-items:center}
+    .tile .meta .title{font-size:13px}
+    .tile .meta .resume{font-size:12px;color:var(--muted)}
+    #readerWrap{display:none;flex-direction:column;align-items:center;position:relative;width:100%;height:100vh}
+    #readerHeader{width:100%;display:flex;justify-content:space-between;align-items:center;padding:22px 40px;position:fixed;top:0;left:0;z-index:50;background:linear-gradient(180deg,rgba(10,10,10,0.9),transparent);backdrop-filter:blur(2px)}
+    #readerHeader h2{margin:0;font-size:18px}
+    #viewerContainer{width:820px;max-width:92%;margin-top:98px;margin-bottom:80px;position:relative}
+    #viewer{background:rgba(0,0,0,0.35);padding:36px 48px;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,0.7);max-height:74vh;overflow:auto}
+    #viewer .chapter-title{font-size:20px;margin:0 0 12px 0}
+    #viewer p{opacity:0;margin:0 0 1.15em 0;line-height:1.8;font-size:18px}
+    #viewer p.visible{opacity:1;transition:opacity .8s ease}
+    #viewer .dropcap{float:left;font-size:64px;line-height:56px;padding-right:12px;padding-top:8px;color:var(--accent)}
+    #progressBar{position:fixed;right:20px;top:20px;width:10px;height:60vh;background:rgba(255,255,255,0.03);border-radius:20px;overflow:hidden}
+    #progressFill{width:100%;height:0;background:linear-gradient(180deg,var(--accent),#d4d4b8)}
+    .nav{position:fixed;left:0;right:0;bottom:24px;display:flex;justify-content:space-between;padding:0 40px;pointer-events:none}
+    .nav button{pointer-events:auto;background:linear-gradient(145deg,#2a2a2a,#171717);border-radius:28px;padding:14px 22px;border:none;color:var(--accent);font-size:16px;box-shadow:0 8px 22px rgba(0,0,0,0.6);cursor:pointer;transition:transform .18s,box-shadow .18s}
+    .nav button:hover{transform:scale(1.06);box-shadow:0 14px 34px rgba(0,0,0,0.75)}
+    .nav button:active{transform:scale(.96)}
+    #fog{position:fixed;inset:0;background:radial-gradient(circle at 50% 40%,rgba(255,255,255,0.02),rgba(255,255,255,0.01)10%,rgba(0,0,0,0.85)40%);pointer-events:none;opacity:0;transition:opacity .6s;z-index:90}
+    #cursorGlow{position:fixed;width:22px;height:22px;border-radius:50%;pointer-events:none;mix-blend-mode:screen;box-shadow:0 0 32px 10px rgba(245,245,220,0.22);transform:translate(-50%,-50%);z-index:200;transition:all .18s ease}
+    @media(max-width:900px){#sidebar{display:none}#viewer{padding:22px}}
+  </style>
 </head>
 <body>
-<!-- Animated header -->
-<div class="header">
-  <div class="logo">📖</div>
-  <h1>Comick EPUB Reader</h1>
-</div>
-<!-- Light/Dark mode toggle -->
-<button id="modeToggle" title="Toggle light/dark mode">🌙</button>
-
-<div class="container">
-  <input type="file" id="fileInput" accept=".epub" hidden>
-  <button id="uploadBtn" aria-label="Upload EPUB">
-    <span class="icon">⬆️</span>
-    Upload EPUB
-  </button>
-  <div id="uploadTooltip">Click or drag-and-drop to upload your EPUB file</div>
-  <div id="reader"></div>
-</div>
-<div id="cursorOrb"></div>
-
-<script>
-// --- Cursor orb ---
-const orb=document.getElementById('cursorOrb');
-document.addEventListener('mousemove',e=>{
-  orb.style.left=e.clientX+'px';
-  orb.style.top=e.clientY+'px';
-});
-
-// --- Light/Dark mode toggle ---
-const modeToggle = document.getElementById('modeToggle');
-modeToggle.onclick = ()=>{
-  document.body.classList.toggle('light');
-  modeToggle.innerText = document.body.classList.contains('light') ? '🌑' : '🌙';
-};
-
-// --- EPUB logic ---
-const uploadBtn=document.getElementById('uploadBtn');
-const fileInput=document.getElementById('fileInput');
-const readerDiv=document.getElementById('reader');
-let rendition=null;
-
-// Drag-and-drop support
-uploadBtn.addEventListener('dragover',e=>{
-  e.preventDefault(); uploadBtn.setAttribute('dragover','');
-});
-uploadBtn.addEventListener('dragleave',e=>{
-  uploadBtn.removeAttribute('dragover');
-});
-uploadBtn.addEventListener('drop',async e=>{
-  e.preventDefault(); uploadBtn.removeAttribute('dragover');
-  if(e.dataTransfer.files&&e.dataTransfer.files[0]) {
-    handleFile(e.dataTransfer.files[0]);
-  }
-});
-
-// Tooltip logic
-const uploadTooltip = document.getElementById('uploadTooltip');
-uploadBtn.addEventListener('mouseenter',()=>uploadTooltip.style.opacity=1);
-uploadBtn.addEventListener('mouseleave',()=>uploadTooltip.style.opacity=0);
-
-uploadBtn.onclick=()=>fileInput.click();
-fileInput.addEventListener('change',async e=>{
-  if(e.target.files[0]) handleFile(e.target.files[0]);
-});
-
-async function handleFile(file) {
-  if(!file) return;
-  readerDiv.innerHTML = "";
-  const url = URL.createObjectURL(file);
-  const book = ePub(url);
-  rendition = book.renderTo("reader",{width:"100%",height:"100%"});
-  rendition.display();
-  rendition.themes.default({
-    'body':{
-      'color':document.body.classList.contains('light')?'#232946':'#fff',
-      'background':'transparent',
-      'line-height':'1.7',
-      'font-size':'1.17rem',
-      'font-family':'Poppins,Montserrat,sans-serif'
-    },
-    'p':{'margin':'1.2em 0'}
-  });
-  // Clean up objectURL when done
-  book.loaded.spine.then(()=>{
-    book.ready.then(()=>setTimeout(()=>URL.revokeObjectURL(url),5000));
-  });
-}
-</script>
-
+  <div id="app">
+    <aside id="sidebar">
+      <h1>Comick Library</h1>
+      <div class="controls">
+        <label class="add-btn">Add Series (EPUB)
+          <input id="epubInput" type="file" accept=".epub" style="display:none">
+        </label>
+        <button id="addSeriesBtn" class="add-btn">Add Series</button>
+      </div>
+      <div id="statusMsg" style="color:var(--muted);font-size:13px;margin-top:10px">Ready</div>
+      <div style="height:24px"></div>
+      <div style="color:var(--muted);font-size:13px">Series stored in browser via IndexedDB.</div>
+    </aside>
+    <main id="main">
+      <div id="homepageView">
+        <div style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+          <h2 style="margin:0">Your Library</h2>
+          <div style="color:var(--muted);font-size:13px">Tap a cover to open • Hover to resume</div>
+        </div>
+        <div class="tiles" id="tiles"></div>
+      </div>
+      <div id="readerWrap">
+        <div id="readerHeader">
+          <h2 id="seriesTitle">Series</h2>
+          <div>
+            <button id="gotoHome" class="add-btn">Library</button>
+            <button id="downloadEpub" class="add-btn">Download EPUB</button>
+          </div>
+        </div>
+        <div id="viewerContainer">
+          <div id="viewer" tabindex="0"></div>
+        </div>
+        <div id="progressBar"><div id="progressFill"></div></div>
+        <div class="nav">
+          <button id="prevBtn">⟵ Prev</button>
+          <button id="nextBtn">Next ⟶</button>
+        </div>
+      </div>
+    </main>
+  </div>
+  <div id="fog"></div>
+  <div id="cursorGlow"></div>
+  <script>
+  const DB_NAME='comickDB';const STORE_NAME='seriesStore';let db;const statusMsg=document.getElementById('statusMsg');
+  function openDB(){return new Promise((res,rej)=>{const req=indexedDB.open(DB_NAME,1);req.onupgradeneeded=e=>{db=e.target.result;db.createObjectStore(STORE_NAME,{keyPath:'id'})};req.onsuccess=e=>{db=e.target.result;res(db)};req.onerror=e=>rej(e)})}
+  async function getAllSeries(){if(!db)await openDB();return new Promise(r=>{const tx=db.transaction(STORE_NAME,'readonly');const s=tx.objectStore(STORE_NAME);const req=s.getAll();req.onsuccess=()=>r(req.result)})}
+  async function saveSeries(series){statusMsg.textContent='Caching EPUB...';if(!db)await openDB();return new Promise(r=>{const tx=db.transaction(STORE_NAME,'readwrite');tx.objectStore(STORE_NAME).put(series).onsuccess=()=>{statusMsg.textContent='Ready';r()}})}
+  function migrateFromLocal(){const old=localStorage.getItem('comick_series_v1');if(!old)return;try{const obj=JSON.parse(old);for(const id in obj){saveSeries({...obj[id],id})}localStorage.removeItem('comick_series_v1')}catch(e){console.error(e)}}
+  const cursorGlow=document.getElementById('cursorGlow');let lastHover=null;document.addEventListener('mousemove',e=>{cursorGlow.style.left=e.clientX+'px';cursorGlow.style.top=e.clientY+'px';if(lastHover&&lastHover.matches(':hover'))cursorGlow.style.boxShadow='0 0 42px 16px rgba(245,245,220,0.32)';else cursorGlow.style.boxShadow='0 0 32px 10px rgba(245,245,220,0.22)'});
+  document.addEventListener('mouseover',e=>{if(e.target.closest('.add-btn,.tile,.nav button'))lastHover=e.target});document.addEventListener('mouseout',e=>{if(e.target==lastHover)lastHover=null});
+  migrateFromLocal();
+  </script>
 </body>
 </html>
