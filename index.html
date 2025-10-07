@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Reader core test</title>
+  <title>EPUB Reader Test (Fixed)</title>
   <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
   <style>
     body{background:#0d0d0f;color:#f5f5dc;font-family:serif;margin:0;padding:2rem}
@@ -21,20 +21,31 @@
       const f = file.files[0];
       if(!f) return;
 
-      viewer.innerHTML = '';
-      const blob = new Blob([await f.arrayBuffer()], {type:'application/epub+zip'});
-      const url  = URL.createObjectURL(blob);
+      viewer.innerHTML = 'Loading EPUB...';
 
       try {
-        const book = ePub(url);
-        await book.ready;
-        const rendition = book.renderTo(viewer, {width:'100%',height:'100%',flow:'scrolled'});
-        rendition.themes.default({
-          'body':{'background':'#111','color':'#f5f5dc','font-family':'serif','line-height':'1.8'}
+        // Read as ArrayBuffer and pass directly
+        const buffer = await f.arrayBuffer();
+        const book = ePub(buffer);
+        const rendition = book.renderTo(viewer, {
+          width: "100%",
+          height: "100%",
+          flow: "scrolled"
         });
+
+        rendition.themes.default({
+          body: {
+            background: "#111",
+            color: "#f5f5dc",
+            "font-family": "serif",
+            "line-height": "1.8"
+          }
+        });
+
         await rendition.display();
       } catch(err) {
-        console.error('Open failed', err);
+        console.error('Error:', err);
+        viewer.innerHTML = 'Failed to load EPUB.';
       }
     };
   </script>
