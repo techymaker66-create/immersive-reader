@@ -1,163 +1,445 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Immersive Reader v2</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/epubjs/dist/epub.min.js"></script>
-  <style>
-    body { background: radial-gradient(circle at top left, #0d1117, #050608 70%); overflow: hidden; }
-    .orb {
-      position: fixed; pointer-events: none; width: 28px; height: 28px;
-      border-radius: 50%; mix-blend-mode: screen;
-      background: radial-gradient(circle, rgba(80,180,255,0.5) 0%, transparent 70%);
-      box-shadow: 0 0 30px rgba(80,180,255,0.3);
-      transition: transform 0.15s ease, width 0.15s, height 0.15s;
-      z-index: 50;
-    }
-    .orb.hover { width: 48px; height: 48px; box-shadow: 0 0 60px rgba(80,180,255,0.4); }
-    #readerHeader { backdrop-filter: blur(12px); background: rgba(20,25,30,0.4); transition: transform 0.3s ease; }
-    #viewer iframe { width: 100% !important; height: 100% !important; }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Comick — Clean Reader (From First)</title>
+
+<!-- EPUB.js (stable UMD) -->
+<script src="https://unpkg.com/epubjs/dist/epub.min.js"></script>
+
+<!-- Fonts + basic look -->
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#0d0d0f; --panel:#121216; --muted:#9b9b9b; --accent:#f5f5dc;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:'Playfair Display',serif;background:var(--bg);color:var(--accent);-webkit-font-smoothing:antialiased}
+#app{display:flex;min-height:100vh}
+
+/* Sidebar */
+#sidebar{width:320px;padding:24px;background:linear-gradient(180deg,#0b0b0d,#0f0f12);border-right:1px solid rgba(255,255,255,0.03)}
+h1{margin:0 0 12px 0;font-size:20px}
+.controls{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.row{display:flex;gap:8px;align-items:center}
+.add-btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 10px;border-radius:8px;color:var(--accent);cursor:pointer}
+.small{font-size:13px;color:var(--muted)}
+
+/* Tiles */
+.tiles{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px}
+.tile{width:160px;height:240px;border-radius:10px;overflow:hidden;position:relative;background:#171718;box-shadow:0 6px 18px rgba(0,0,0,0.6);cursor:pointer;transition:transform .18s,box-shadow .18s,filter .18s}
+.tile img{width:100%;height:100%;object-fit:cover;display:block}
+.tile .meta{position:absolute;left:0;right:0;bottom:0;padding:8px;background:linear-gradient(180deg,transparent, rgba(0,0,0,0.65));display:flex;justify-content:center}
+.tile:hover{transform:translateY(-6px) scale(1.04);box-shadow:0 16px 40px rgba(245,245,220,0.35);filter:brightness(1.08)}
+
+/* Main / Reader */
+#main{flex:1;padding:24px;display:flex;flex-direction:column;align-items:center}
+#homepageHeader{width:100%;display:flex;justify-content:space-between;align-items:center}
+#readerWrap{display:none;flex-direction:column;align-items:center;width:100%;height:100vh;position:relative}
+#readerHeader{width:100%;display:flex;justify-content:space-between;align-items:center;padding:18px 24px;position:fixed;top:0;left:0;z-index:40;background:linear-gradient(180deg, rgba(10,10,10,0.9), transparent)}
+#viewerContainer{width:840px;max-width:94%;margin-top:82px;margin-bottom:48px;height:calc(100vh - 160px)}
+#viewer{background:rgba(0,0,0,0.9);border-radius:12px;padding:28px;box-shadow:0 12px 40px rgba(0,0,0,0.6);width:100%;height:100%;overflow:auto;color:var(--accent)}
+#viewer *{color:inherit} /* force readable color inside EPUB iframe */
+.footer-controls{position:fixed;left:0;right:0;bottom:18px;display:flex;justify-content:center;gap:12px;pointer-events:none}
+.button{pointer-events:auto;background:linear-gradient(145deg,#2a2a2a,#171717);border-radius:28px;padding:12px 18px;border:none;color:var(--accent);cursor:pointer;box-shadow:0 8px 28px rgba(0,0,0,0.5)}
+
+/* Cursor orb */
+#cursorGlow{position:fixed;width:12px;height:12px;border-radius:50%;pointer-events:none;mix-blend-mode:screen;box-shadow:0 0 18px 7px rgba(245,245,220,0.55);transform:translate(-50%,-50%);z-index:9999;transition:all .12s ease}
+
+/* small responsive */
+@media (max-width:980px){ #sidebar{display:none} #viewerContainer{width:94%} }
+</style>
 </head>
-<body class="h-screen flex flex-col text-gray-100 font-serif">
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <h1>Comick Library</h1>
 
-  <div class="flex flex-1">
-    <!-- Sidebar -->
-    <aside id="sidebar" class="w-72 bg-black/30 backdrop-blur-lg border-r border-white/10 p-4 flex flex-col space-y-4">
-      <h1 class="text-lg font-bold">📚 Library</h1>
-
-      <div class="flex flex-col gap-2">
-        <input id="epubFile" type="file" accept=".epub" class="text-sm bg-white/5 p-2 rounded" />
-        <input id="coverFile" type="file" accept="image/*" class="text-sm bg-white/5 p-2 rounded" />
-        <button id="addBtn" class="bg-blue-500/80 hover:bg-blue-600 text-white rounded py-1.5">Add EPUB</button>
+    <div class="controls">
+      <!-- Single combined workflow -->
+      <div class="row">
+        <label class="add-btn">Choose EPUB
+          <input id="epubInput" type="file" accept=".epub" style="display:none">
+        </label>
+        <label class="add-btn">Choose Cover
+          <input id="coverInput" type="file" accept="image/*" style="display:none">
+        </label>
       </div>
 
-      <div id="library" class="grid grid-cols-2 gap-3 overflow-y-auto flex-1 p-1"></div>
-    </aside>
+      <div class="row">
+        <button id="addSeriesBtn" class="add-btn">Add Series</button>
+        <button id="clearAllBtn" class="add-btn">Clear All</button>
+      </div>
 
-    <!-- Reader -->
-    <main class="flex-1 relative overflow-hidden">
-      <header id="readerHeader" class="sticky top-0 z-40 flex items-center justify-between p-3 border-b border-white/10">
-        <h2 id="bookTitle" class="font-semibold text-white/90">No book open</h2>
-        <div class="flex gap-2">
-          <button id="backBtn" class="px-2 py-1 text-sm bg-white/10 hover:bg-white/20 rounded">Library</button>
-          <button id="downloadBtn" class="px-2 py-1 text-sm bg-white/10 hover:bg-white/20 rounded">Download</button>
+      <div id="statusMsg" class="small">Ready — select EPUB and optional cover, then click Add.</div>
+    </div>
+
+    <div class="small">Library (right-click tile to delete)</div>
+    <div class="tiles" id="tiles"></div>
+  </aside>
+
+  <main id="main">
+    <div id="homepageHeader">
+      <h2 style="margin:0">Your Library</h2>
+      <div class="small">Click tile to open • Right-click to delete</div>
+    </div>
+
+    <!-- reader -->
+    <div id="readerWrap">
+      <div id="readerHeader">
+        <div id="seriesTitle">Series</div>
+        <div>
+          <button id="gotoHome" class="button">Library</button>
+          <button id="downloadEpub" class="button">Download</button>
         </div>
-      </header>
-
-      <section id="viewer" class="absolute inset-0 overflow-auto p-8 text-lg leading-relaxed text-gray-200"></section>
-
-      <div class="absolute bottom-4 inset-x-0 flex justify-center gap-3">
-        <button id="prevBtn" class="bg-white/10 hover:bg-white/20 px-3 py-1 rounded">◀ Prev</button>
-        <button id="nextBtn" class="bg-white/10 hover:bg-white/20 px-3 py-1 rounded">Next ▶</button>
       </div>
-    </main>
-  </div>
 
-  <div id="orb" class="orb"></div>
+      <div id="viewerContainer"><div id="viewer" tabindex="0"></div></div>
 
-  <script>
-    const orb = document.getElementById('orb');
-    const epubFile = document.getElementById('epubFile');
-    const coverFile = document.getElementById('coverFile');
-    const addBtn = document.getElementById('addBtn');
-    const library = document.getElementById('library');
-    const viewer = document.getElementById('viewer');
-    const backBtn = document.getElementById('backBtn');
-    const bookTitle = document.getElementById('bookTitle');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    let active = null, book = null, rendition = null, epubUrl = null;
+      <div class="footer-controls">
+        <button id="prevBtn" class="button">⟵ Prev</button>
+        <button id="nextBtn" class="button">Next ⟶</button>
+      </div>
+    </div>
+  </main>
+</div>
 
-    // IndexedDB wrapper
-    const DB = 'immReaderDB'; const STORE = 'series';
-    function openDB() {
-      return new Promise((res, rej) => {
-        const req = indexedDB.open(DB, 1);
-        req.onupgradeneeded = e => e.target.result.createObjectStore(STORE, { keyPath: 'id' });
-        req.onsuccess = () => res(req.result);
-        req.onerror = () => rej(req.error);
-      });
+<div id="cursorGlow"></div>
+
+<script>
+/* ===========================
+   Clean start: no syntax errors
+   =========================== */
+
+document.addEventListener('DOMContentLoaded', () => {
+  const statusMsg = document.getElementById('statusMsg');
+  const tilesDiv = document.getElementById('tiles');
+  const epubInput = document.getElementById('epubInput');
+  const coverInput = document.getElementById('coverInput');
+  const addSeriesBtn = document.getElementById('addSeriesBtn');
+  const clearAllBtn = document.getElementById('clearAllBtn');
+  const gotoHome = document.getElementById('gotoHome');
+  const downloadEpub = document.getElementById('downloadEpub');
+  const readerWrap = document.getElementById('readerWrap');
+  const homepageView = document.getElementById('homepageHeader');
+  const seriesTitle = document.getElementById('seriesTitle');
+  const viewer = document.getElementById('viewer');
+
+  // Cursor orb: follow exactly, amplify on hover using delegation
+  const cursorGlow = document.getElementById('cursorGlow');
+  document.addEventListener('mousemove', e => {
+    cursorGlow.style.left = e.clientX + 'px';
+    cursorGlow.style.top = e.clientY + 'px';
+  });
+  // Hover amplification (event delegation)
+  document.addEventListener('mouseover', (e) => {
+    if (e.target.closest('.add-btn') || e.target.closest('.tile') || e.target.closest('.button')) {
+      cursorGlow.style.boxShadow = '0 0 28px 12px rgba(245,245,220,0.9)';
+      cursorGlow.style.transform = 'translate(-50%,-50%) scale(1.35)';
     }
-    async function tx(mode, fn) {
+  });
+  document.addEventListener('mouseout', (e) => {
+    if (e.target.closest('.add-btn') || e.target.closest('.tile') || e.target.closest('.button')) {
+      cursorGlow.style.boxShadow = '0 0 18px 7px rgba(245,245,220,0.55)';
+      cursorGlow.style.transform = 'translate(-50%,-50%) scale(1)';
+    }
+  });
+
+  /* -------------------------
+     IndexedDB utilities (simple, robust)
+     ------------------------- */
+  const DB_NAME = 'comickDB_v2';
+  const STORE = 'seriesStore';
+  let dbPromise = null;
+
+  function openDB() {
+    if (dbPromise) return dbPromise;
+    dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(STORE)) {
+          db.createObjectStore(STORE, { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = (e) => resolve(e.target.result);
+      req.onerror = (e) => reject(e);
+    });
+    return dbPromise;
+  }
+
+  async function saveSeries(obj) {
+    try {
       const db = await openDB();
       return new Promise((res, rej) => {
-        const tx = db.transaction(STORE, mode);
-        const store = tx.objectStore(STORE);
-        const r = fn(store);
-        tx.oncomplete = () => res(r.result);
-        tx.onerror = () => rej(tx.error);
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).put(obj);
+        tx.oncomplete = () => res();
+        tx.onerror = (e) => rej(e);
       });
+    } catch (err) {
+      throw err;
     }
+  }
 
-    async function refreshLibrary() {
-      const series = await tx('readonly', s => s.getAll());
-      library.innerHTML = '';
-      if (!series.length) {
-        library.innerHTML = `<p class="text-gray-500 text-sm col-span-2">No EPUBs added yet.</p>`;
+  async function getAllSeries() {
+    const db = await openDB();
+    return new Promise((res) => {
+      const tx = db.transaction(STORE, 'readonly');
+      const req = tx.objectStore(STORE).getAll();
+      req.onsuccess = () => res(req.result || []);
+      req.onerror = () => res([]);
+    });
+  }
+
+  async function deleteSeriesById(id) {
+    const db = await openDB();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).delete(id);
+      tx.oncomplete = () => res();
+      tx.onerror = (e) => rej(e);
+    });
+  }
+
+  async function clearAll() {
+    const db = await openDB();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).clear();
+      tx.oncomplete = () => res();
+      tx.onerror = (e) => rej(e);
+    });
+  }
+
+  /* -------------------------
+     Library rendering & UI
+     ------------------------- */
+  let selectedEpub = null;
+  let selectedCover = null;
+
+  epubInput.addEventListener('change', (evt) => {
+    selectedEpub = evt.target.files && evt.target.files[0] ? evt.target.files[0] : null;
+    statusMsg.textContent = selectedEpub ? 'EPUB selected: ' + selectedEpub.name : 'Choose an EPUB file';
+  });
+
+  coverInput.addEventListener('change', (evt) => {
+    selectedCover = evt.target.files && evt.target.files[0] ? evt.target.files[0] : null;
+    statusMsg.textContent = selectedCover ? 'Cover selected: ' + selectedCover.name : statusMsg.textContent;
+  });
+
+  addSeriesBtn.addEventListener('click', async () => {
+    try {
+      if (!selectedEpub) { alert('Select an EPUB first'); return; }
+      const id = Date.now().toString();
+      const obj = { id, title: (selectedEpub && selectedEpub.name) ? selectedEpub.name.replace(/\.epub$/i,'') : 'Untitled', epubBlob: selectedEpub, coverBlob: selectedCover };
+      await saveSeries(obj);
+      selectedEpub = null; selectedCover = null; epubInput.value = ''; coverInput.value = '';
+      statusMsg.textContent = 'Saved: ' + obj.title;
+      await renderLibrary();
+    } catch (err) {
+      console.error(err);
+      statusMsg.textContent = 'Error saving series';
+    }
+  });
+
+  clearAllBtn.addEventListener('click', async () => {
+    if (!confirm('Clear entire library?')) return;
+    try {
+      await clearAll();
+      statusMsg.textContent = 'Library cleared';
+      renderLibrary();
+    } catch (err) {
+      console.error(err);
+      statusMsg.textContent = 'Failed to clear library';
+    }
+  });
+
+  async function renderLibrary() {
+    tilesDiv.innerHTML = '';
+    try {
+      const list = await getAllSeries();
+      if (!list || list.length === 0) {
+        tilesDiv.innerHTML = '<div class="small" style="padding:12px;color:var(--muted)">No series. Add one using the controls above.</div>';
+        return;
       }
-      series.forEach(item => {
-        const div = document.createElement('div');
-        div.className = 'bg-white/5 rounded-lg p-2 hover:bg-white/10 cursor-pointer flex flex-col gap-2';
-        div.innerHTML = `
-          <div class="aspect-[3/4] bg-black/50 rounded overflow-hidden flex items-center justify-center">
-            ${item.cover ? `<img src="${URL.createObjectURL(item.cover)}" class="object-cover w-full h-full"/>` : '<span class="text-xs text-gray-500">No Cover</span>'}
-          </div>
-          <p class="text-xs text-center truncate">${item.title}</p>`;
-        div.onclick = () => openBook(item.id);
-        div.oncontextmenu = (e) => { e.preventDefault(); if (confirm(`Delete "${item.title}"?`)) tx('readwrite', s => s.delete(item.id)).then(refreshLibrary); };
-        library.appendChild(div);
+      for (const s of list) {
+        const tile = document.createElement('div');
+        tile.className = 'tile';
+        const img = document.createElement('img');
+        if (s.coverBlob) {
+          img.src = URL.createObjectURL(s.coverBlob);
+          // revoke when tile removed later (we'll rely on page lifecycle)
+        } else {
+          img.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='320' height='480'><rect fill='#1a1a1a' width='100%' height='100%'/><text x='50%' y='50%' fill='#bdbdb4' font-family='serif' font-size='20' text-anchor='middle'>No Cover</text></svg>`);
+        }
+        tile.appendChild(img);
+
+        const meta = document.createElement('div'); meta.className = 'meta';
+        const title = document.createElement('div'); title.className = 'title'; title.textContent = s.title || 'Untitled';
+        meta.appendChild(title);
+        tile.appendChild(meta);
+
+        // single click: open reader
+        tile.addEventListener('click', () => openReader(s));
+
+        // right-click: delete (no opening)
+        tile.addEventListener('contextmenu', async (ev) => {
+          ev.preventDefault();
+          const ok = confirm('Delete "' + (s.title || 'Untitled') + '" ?');
+          if (!ok) return;
+          try {
+            await deleteSeriesById(s.id);
+            statusMsg.textContent = 'Deleted: ' + (s.title || s.id);
+            await renderLibrary();
+          } catch (err) {
+            console.error(err);
+            statusMsg.textContent = 'Delete failed';
+          }
+        });
+
+        tilesDiv.appendChild(tile);
+      }
+    } catch (err) {
+      console.error(err);
+      statusMsg.textContent = 'Failed to load library';
+    }
+  }
+
+  /* -------------------------
+     EPUB rendering: robust
+     ------------------------- */
+  let currentSeries = null;
+  let currentBook = null;
+  let currentRendition = null;
+  let currentBlobUrl = null;
+
+  async function cleanupRendition() {
+    try {
+      if (currentRendition && typeof currentRendition.destroy === 'function') {
+        try { currentRendition.destroy(); } catch(e){ /* ignore */ }
+      }
+    } catch (err) { /* ignore */ }
+    currentRendition = null;
+
+    if (currentBook && typeof currentBook.destroy === 'function') {
+      try { currentBook.destroy(); } catch(e){ /* ignore */ }
+    }
+    currentBook = null;
+
+    if (currentBlobUrl) {
+      try { URL.revokeObjectURL(currentBlobUrl); } catch(e){ /* ignore */ }
+    }
+    currentBlobUrl = null;
+
+    viewer.innerHTML = ''; // clear viewer container
+  }
+
+  async function openReader(seriesObj) {
+    await cleanupRendition();
+    try {
+      currentSeries = seriesObj;
+      document.getElementById('homepageHeader').style.display = 'none';
+      document.getElementById('readerWrap').style.display = 'flex';
+      seriesTitle.textContent = seriesObj.title || 'Series';
+
+      // create blob url and open book
+      currentBlobUrl = URL.createObjectURL(seriesObj.epubBlob);
+      currentBook = ePub(currentBlobUrl);
+
+      // wait for book to be ready
+      await currentBook.ready;
+
+      // render to container
+      currentRendition = currentBook.renderTo('viewer', { width: '100%', height: '100%' });
+
+      // set a safe default theme (force readable text)
+      currentRendition.themes.register('comick-dark', {
+        'body': {
+          'color': 'var(--accent)',
+          'background': 'rgba(0,0,0,0.9)',
+          'font-family': 'Playfair Display, serif',
+          'line-height': '1.7'
+        },
+        'p': { 'color': 'var(--accent)' }
       });
+      currentRendition.themes.select('comick-dark');
+
+      // attach rendered event so we can detect content
+      let renderedOnce = false;
+      currentRendition.on('rendered', (section) => {
+        // mark as rendered; browser may still style inside iframe but this event means there's content
+        if (!renderedOnce) {
+          renderedOnce = true;
+          statusMsg.textContent = 'Rendering: ' + (seriesObj.title || '');
+        }
+      });
+
+      // attempt to display the first location robustly.
+      // Some files need a tiny delay; calling display twice sometimes helps with edge-case epub styling.
+      await currentRendition.display();
+      // small guard: if viewer has no text, try again after 60ms
+      setTimeout(() => {
+        try {
+          const textContent = viewer.innerText || '';
+          if (textContent.trim().length === 0) {
+            currentRendition && currentRendition.display && currentRendition.display().catch(()=>{/*ignore*/});
+          }
+        } catch(e){/*ignore*/}
+      }, 60);
+
+      statusMsg.textContent = 'Opened: ' + (seriesObj.title || '');
+    } catch (err) {
+      console.error('Open reader error:', err);
+      statusMsg.textContent = 'Failed to open EPUB (see console)';
+      // cleanup on failure
+      await cleanupRendition();
     }
+  }
 
-    addBtn.onclick = async () => {
-      if (!epubFile.files[0]) return alert('Select an EPUB first.');
-      const epubBlob = epubFile.files[0];
-      const coverBlob = coverFile.files[0] || null;
-      const entry = { id: Date.now(), title: epubBlob.name.replace(/\.epub$/i, ''), epub: epubBlob, cover: coverBlob };
-      await tx('readwrite', s => s.add(entry));
-      epubFile.value = ''; coverFile.value = '';
-      refreshLibrary();
-    };
+  // basic prev/next (navigate by next/prev section)
+  async function goNext() {
+    try {
+      if (!currentRendition) return;
+      const href = await currentRendition.next();
+      // next returns location; nothing else required
+    } catch (err) { /* ignore */ }
+  }
+  async function goPrev() {
+    try {
+      if (!currentRendition) return;
+      const href = await currentRendition.prev();
+    } catch (err) { /* ignore */ }
+  }
 
-    async function openBook(id) {
-      const data = await tx('readonly', s => s.get(id));
-      if (!data) return;
-      active = data;
-      bookTitle.textContent = data.title;
-      epubUrl && URL.revokeObjectURL(epubUrl);
-      epubUrl = URL.createObjectURL(data.epub);
-      viewer.innerHTML = '';
-      book = ePub(epubUrl);
-      rendition = book.renderTo('viewer', { width: '100%', height: '100%' });
-      rendition.themes.default({ body: { color: '#f0f4f8', background: 'transparent', 'font-family': 'Georgia, serif', 'line-height': '1.6' } });
-      rendition.display();
-    }
+  document.getElementById('prevBtn').addEventListener('click', goPrev);
+  document.getElementById('nextBtn').addEventListener('click', goNext);
 
-    backBtn.onclick = () => { viewer.innerHTML = ''; bookTitle.textContent = 'No book open'; };
-    downloadBtn.onclick = () => { if (!active) return; const a = document.createElement('a'); a.href = URL.createObjectURL(active.epub); a.download = active.title + '.epub'; a.click(); };
-    prevBtn.onclick = () => rendition?.prev();
-    nextBtn.onclick = () => rendition?.next();
+  gotoHome.addEventListener('click', async () => {
+    try {
+      await cleanupRendition();
+    } catch (e) { /* ignore */ }
+    document.getElementById('readerWrap').style.display = 'none';
+    document.getElementById('homepageHeader').style.display = 'flex';
+  });
 
-    // Floating orb
-    document.addEventListener('mousemove', e => {
-      orb.style.left = e.clientX + 'px';
-      orb.style.top = e.clientY + 'px';
-    });
-    document.addEventListener('mouseover', e => { if (e.target.closest('button,div,aside')) orb.classList.add('hover'); });
-    document.addEventListener('mouseout', e => { if (!e.relatedTarget || !e.relatedTarget.closest('button,div,aside')) orb.classList.remove('hover'); });
+  downloadEpub.addEventListener('click', () => {
+    if (!currentSeries) return;
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(currentSeries.epubBlob);
+    link.download = (currentSeries.title || 'download') + '.epub';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    // small revoke after a while (browser may still handle)
+    setTimeout(()=>{ try{ URL.revokeObjectURL(link.href) }catch(e){} }, 5000);
+  });
 
-    // Parallax header motion
-    const readerHeader = document.getElementById('readerHeader');
-    viewer.addEventListener('scroll', () => {
-      const y = viewer.scrollTop;
-      readerHeader.style.transform = `translateY(${Math.min(y * 0.1, 20)}px)`;
-    });
-
-    refreshLibrary();
-  </script>
+  // initial paint
+  renderLibrary();
+});
+</script>
 </body>
 </html>
