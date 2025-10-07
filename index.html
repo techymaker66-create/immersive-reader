@@ -1,53 +1,178 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>EPUB Reader Test (Fixed)</title>
-  <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
-  <style>
-    body{background:#0d0d0f;color:#f5f5dc;font-family:serif;margin:0;padding:2rem}
-    #viewer{width:80vw;height:80vh;margin:auto;background:#111;border-radius:10px;overflow:auto}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Immersive EPUB Reader</title>
+<link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body {
+  margin: 0;
+  background: #0e0e0f;
+  color: #f5f5dc;
+  font-family: 'Merriweather', serif;
+  overflow: hidden;
+}
+#container {
+  display: flex;
+  height: 100vh;
+}
+#sidebar {
+  width: 300px;
+  background: #121214;
+  border-right: 1px solid rgba(255,255,255,0.1);
+  padding: 20px;
+  overflow-y: auto;
+}
+#sidebar h2 {
+  margin-top: 0;
+  font-size: 20px;
+  text-align: center;
+}
+#addFile {
+  width: 100%;
+  background: transparent;
+  border: 1px solid #f5f5dc;
+  color: #f5f5dc;
+  border-radius: 8px;
+  padding: 10px;
+  cursor: pointer;
+}
+#bookList {
+  margin-top: 20px;
+}
+.bookItem {
+  background: #1b1b1d;
+  margin-bottom: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.bookItem:hover {
+  background: #2a2a2d;
+}
+#reader {
+  flex: 1;
+  position: relative;
+  background: #0d0d0e;
+  display: flex;
+  flex-direction: column;
+}
+#viewer {
+  flex: 1;
+  margin: 40px;
+  border-radius: 12px;
+  box-shadow: 0 0 30px rgba(0,0,0,0.6);
+  overflow: hidden;
+}
+#viewer iframe {
+  width: 100%;
+  height: 100%;
+}
+.nav {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 40px;
+  background: rgba(0,0,0,0.4);
+}
+.nav button {
+  background: transparent;
+  border: 1px solid #f5f5dc;
+  color: #f5f5dc;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.nav button:hover {
+  background: #f5f5dc;
+  color: #0e0e0f;
+}
+</style>
 </head>
 <body>
-  <input id="file" type="file" accept=".epub">
-  <div id="viewer"></div>
+<div id="container">
+  <div id="sidebar">
+    <h2>Your Library</h2>
+    <input type="file" id="fileInput" accept=".epub" style="display:none">
+    <button id="addFile">+ Add EPUB</button>
+    <div id="bookList"></div>
+  </div>
+  <div id="reader">
+    <div id="viewer"></div>
+    <div class="nav">
+      <button id="prevBtn">← Prev</button>
+      <button id="nextBtn">Next →</button>
+    </div>
+  </div>
+</div>
 
-  <script>
-    const file = document.getElementById('file');
-    const viewer = document.getElementById('viewer');
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
 
-    file.onchange = async () => {
-      const f = file.files[0];
-      if(!f) return;
+<script>
+let book, rendition;
+const viewer = document.getElementById('viewer');
+const bookList = document.getElementById('bookList');
 
-      viewer.innerHTML = 'Loading EPUB...';
+document.getElementById('addFile').onclick = () => document.getElementById('fileInput').click();
 
-      try {
-        // Read as ArrayBuffer and pass directly
-        const buffer = await f.arrayBuffer();
-        const book = ePub(buffer);
-        const rendition = book.renderTo(viewer, {
-          width: "100%",
-          height: "100%",
-          flow: "scrolled"
-        });
+document.getElementById('fileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const buffer = await file.arrayBuffer();
+  const title = file.name.replace(/\.epub$/i, '');
+  const id = Date.now();
+  const item = { id, title, data: buffer };
+  localStorage.setItem('book-' + id, JSON.stringify({ title }));
+  const blob = new Blob([buffer]);
+  localStorage.setItem('bookBlob-' + id, URL.createObjectURL(blob));
+  renderLibrary();
+});
 
-        rendition.themes.default({
-          body: {
-            background: "#111",
-            color: "#f5f5dc",
-            "font-family": "serif",
-            "line-height": "1.8"
-          }
-        });
+function renderLibrary() {
+  bookList.innerHTML = '';
+  Object.keys(localStorage)
+    .filter(k => k.startsWith('book-') && !k.includes('Blob'))
+    .forEach(key => {
+      const { title } = JSON.parse(localStorage.getItem(key));
+      const id = key.split('-')[1];
+      const div = document.createElement('div');
+      div.className = 'bookItem';
+      div.textContent = title;
+      div.onclick = () => openBook(id);
+      bookList.appendChild(div);
+    });
+}
 
-        await rendition.display();
-      } catch(err) {
-        console.error('Error:', err);
-        viewer.innerHTML = 'Failed to load EPUB.';
-      }
-    };
-  </script>
+async function openBook(id) {
+  const blobUrl = localStorage.getItem('bookBlob-' + id);
+  if (!blobUrl) return alert('Book data missing.');
+  viewer.innerHTML = '';
+  book = ePub(blobUrl);
+  rendition = book.renderTo('viewer', {
+    width: '100%',
+    height: '100%',
+    flow: 'paginated',
+  });
+  rendition.themes.default({
+    body: {
+      background: '#0e0e0f',
+      color: '#f5f5dc',
+      'line-height': '1.8',
+      'font-family': 'Merriweather, serif',
+      'font-size': '18px'
+    }
+  });
+  await rendition.display();
+}
+
+document.getElementById('nextBtn').onclick = () => rendition && rendition.next();
+document.getElementById('prevBtn').onclick = () => rendition && rendition.prev();
+
+renderLibrary();
+</script>
 </body>
 </html>
+
