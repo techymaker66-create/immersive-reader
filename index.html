@@ -3,223 +3,140 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Comick — Final (Introspection + Fixes)</title>
-
-<!-- Fonts: restored to the original Playfair / Merriweather vibe -->
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">
-
-<!-- JSZip for EPUB parsing (client-only) -->
+<title>Comick — Final Clean Reader</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-
 <style>
-/* ===========================
-   THEME + LAYOUT (Original aesthetic restored)
-   Variables tuned for desktop reading.
-   =========================== */
 :root{
-  --bg:#09090b;
-  --panel:#0f0f12;
-  --muted:#9b9b9b;
-  --accent:#efe7c9;
-  --glass:rgba(255,255,255,0.03);
-  --card-shadow:0 28px 100px rgba(0,0,0,0.72);
+  --bg:#09090b; --panel:#0f0f12; --muted:#9b9b9b; --accent:#efe7c9;
+  --card-shadow:0 32px 120px rgba(0,0,0,0.75);
   --btn-shadow:0 12px 36px rgba(0,0,0,0.55);
-  --radius:14px;
-  --measure:64ch;
-  --reader-max:1350px; /* <--- increased reading max width (desktop-first) */
-  --reader-padding:48px;
-  --reader-line:1.82;
+  --reader-max:1400px; --reader-padding:48px; --measure:64ch;
 }
-
-/* reset */
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial;background:linear-gradient(180deg,var(--bg),#020305);color:var(--accent);-webkit-font-smoothing:antialiased}
+html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),#020305);color:var(--accent);font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial}
 a{color:inherit}
 
-/* App skeleton */
+/* app layout */
 #app{display:flex;min-height:100vh}
-
-/* Sidebar (keeps original style) */
-#sidebar{
-  width:340px;padding:22px;background:linear-gradient(180deg,#070708,var(--panel));
-  border-right:1px solid rgba(255,255,255,0.03);display:flex;flex-direction:column;gap:12px;
-}
+/* sidebar */
+#sidebar{width:320px;padding:22px;background:linear-gradient(180deg,#070708,var(--panel));border-right:1px solid rgba(255,255,255,0.03);display:flex;flex-direction:column;gap:12px}
 #sidebar h1{margin:0;font-family:'Playfair Display',serif;font-size:20px}
-
-/* Controls */
 .controls{display:flex;flex-direction:column;gap:10px}
-.add-btn{
-  display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;
-  background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);
-  border:1px solid rgba(255,255,255,0.04);color:var(--accent);cursor:pointer;
-  transition:transform .14s ease,box-shadow .14s;box-shadow:var(--btn-shadow);font-weight:600
-}
+.add-btn{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border:1px solid rgba(255,255,255,0.04);color:var(--accent);cursor:pointer;transition:transform .14s,box-shadow .14s;box-shadow:var(--btn-shadow);font-weight:600}
 .add-btn input{display:none}
-.add-btn:hover{transform:translateY(-6px);box-shadow:0 20px 50px rgba(0,0,0,0.7)}
-
+.add-btn:hover{transform:translateY(-4px)}
 #statusMsg{color:var(--muted);font-size:13px}
 
-/* Main area (library + reader overlay) */
-#main{flex:1;padding:22px;display:flex;flex-direction:column;align-items:center;position:relative}
+/* small sidebar tiles (optional quick nav) */
+#tiles{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+.tile{border-radius:10px;overflow:hidden;cursor:pointer;transition:transform .14s,box-shadow .14s}
+.tile:hover{transform:translateY(-6px);box-shadow:0 18px 48px rgba(0,0,0,0.6)}
+.tile img{width:100%;height:120px;object-fit:cover;display:block;border-radius:8px}
 
-/* Header row above the grid */
-.headerRow{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;max-width:1400px;width:100%}
+/* main area */
+#main{flex:1;padding:22px;display:flex;flex-direction:column;align-items:center}
+.headerRow{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;width:100%;max-width:1400px}
 .headerRow h2{margin:0;font-family:'Playfair Display',serif}
+.libraryGrid{width:100%;max-width:1400px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px}
 
-/* Library grid (single authoritative display) */
-.libraryGrid{
-  width:100%;max-width:1400px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px;
-}
-
-/* Grid card (hover effect restored) */
-.grid-card{
-  background:linear-gradient(180deg, rgba(255,255,255,0.008), rgba(255,255,255,0.003));
-  padding:10px;border-radius:12px;box-shadow:var(--card-shadow);display:flex;flex-direction:column;gap:12px;
-  transition:transform .18s,box-shadow .18s;cursor:pointer;min-height:360px;
-}
-.grid-card:hover{transform:translateY(-8px) scale(1.02);box-shadow:0 28px 80px rgba(0,0,0,0.72)}
+/* grid cards */
+.grid-card{background:linear-gradient(180deg, rgba(255,255,255,0.007), rgba(255,255,255,0.003));padding:12px;border-radius:12px;box-shadow:var(--card-shadow);display:flex;flex-direction:column;gap:10px;cursor:pointer;transition:transform .16s,box-shadow .16s;min-height:320px}
+.grid-card:hover{transform:translateY(-8px);box-shadow:0 32px 90px rgba(0,0,0,0.72)}
 .grid-cover{height:260px;border-radius:10px;overflow:hidden}
 .grid-cover img{width:100%;height:100%;object-fit:cover;display:block}
-.grid-title{font-family:'Playfair Display',serif;font-size:16px;color:var(--accent);}
+.grid-title{font-family:'Playfair Display',serif;font-size:16px;color:var(--accent)}
 
-/* Reader overlay:
-   - centered, pointer-events active only when visible
-   - native scrollbar visible and styled (desktop expectation)
-*/
-#readerOverlay{
-  display:none;position:fixed;inset:40px;z-index:1500;align-items:center;justify-content:center;
-  background:rgba(0,0,0,0.45); /* backdrop so clicks outside feel natural */
-}
-#readerCard{
-  width:100%;max-width:var(--reader-max);background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));
-  padding:var(--reader-padding);border-radius:12px;box-shadow:var(--card-shadow);overflow:hidden;display:flex;flex-direction:column;
-  max-height:calc(100% - 80px);
-}
-#readerHeader{height:64px;display:flex;align-items:center;justify-content:space-between;padding:6px 12px 18px 12px;background:transparent}
-#readerHeader h2{margin:0;font-family:'Playfair Display',serif;font-size:18px}
-.controls-inline{display:flex;gap:10px;align-items:center}
+/* READER overlay (desktop-first wide) */
+#readerOverlay{display:none;position:fixed;inset:28px;z-index:2000;align-items:center;justify-content:center;background:rgba(0,0,0,0.42)}
+#readerCard{width:100%;max-width:var(--reader-max);background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.004));padding:var(--reader-padding);border-radius:12px;box-shadow:var(--card-shadow);display:flex;flex-direction:column;max-height:calc(100% - 56px)}
+#readerHeader{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+#readerHeader h2{margin:0;font-family:'Playfair Display',serif;font-size:20px}
+.controls-inline{display:flex;gap:8px;align-items:center}
 
-/* Reader scroller - native scrollbar enabled, thin */
-#readerScroller{
-  flex:1;overflow:auto;scroll-behavior:smooth; padding:0 4px;
-  scrollbar-width:thin;
-}
+/* scroller: native scrollbar visible and styled */
+#readerScroller{flex:1;overflow:auto;padding-right:8px;scroll-behavior:smooth}
 #readerScroller::-webkit-scrollbar{width:12px}
-#readerScroller::-webkit-scrollbar-track{background:transparent}
-#readerScroller::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.06);border-radius:999px;border:2px solid rgba(0,0,0,0.25)}
-#readerScroller::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.12)}
+#readerScroller::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.06);border-radius:999px;border:2px solid rgba(0,0,0,0.3)}
+#readingInner{background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.004));padding:28px;border-radius:10px;margin:0 auto;max-width:calc(var(--reader-max) - 2*28px)}
 
-/* inner reading card: paper-like */
-#readingInner{
-  background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.004));
-  padding:28px;border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,0.55);margin:10px auto;max-width:calc(var(--reader-max) - 2*28px);
-}
-
-/* chapter styling */
-.chapter{margin:28px 0;padding:0;border-radius:12px;background:transparent;opacity:0;transform:translateY(12px)}
+.chapter{margin:28px 0;opacity:0;transform:translateY(14px)}
 .chapter.visible{opacity:1;transform:translateY(0);transition:all .38s cubic-bezier(.2,.9,.2,1)}
 .chapter-title{font-family:'Playfair Display',serif;font-size:22px;margin:0 0 12px 0;color:var(--accent)}
-.chapter-body{max-width:var(--measure);margin:0 auto;color:var(--accent);font-size:18px;line-height:var(--reader-line);text-align:justify;hyphens:auto}
+.chapter-body{max-width:var(--measure);margin:0 auto;color:var(--accent);font-size:18px;line-height:1.82;text-align:justify;hyphens:auto}
 .chapter-body p{margin:0 0 1.05em}
-@media (min-width:1000px){
-  .chapter-body p:first-of-type::first-letter{float:left;font-size:56px;line-height:54px;padding-right:12px;padding-top:6px;font-weight:700;color:var(--accent);font-family:'Playfair Display',serif}
-}
 
-/* floating tools (bottom center) */
-.footerControls{position:fixed;left:0;right:0;bottom:18px;display:flex;justify-content:center;pointer-events:none;z-index:1600}
+/* placeholder height to avoid jumps */
+.chapter-placeholder{min-height:60vh;padding:18px;color:var(--muted);border-radius:8px}
+
+/* footer controls and slim progress */
+.footerControls{position:fixed;left:0;right:0;bottom:18px;display:flex;justify-content:center;pointer-events:none;z-index:2100}
 .footerControls .btn{pointer-events:auto;padding:12px 18px;border-radius:22px;border:none;background:linear-gradient(145deg,#202021,#121213);color:var(--accent);font-weight:700;cursor:pointer;box-shadow:var(--btn-shadow)}
+#progressSlim{position:fixed;right:18px;top:56px;width:8px;height:68vh;background:rgba(255,255,255,0.03);border-radius:999px;overflow:hidden;z-index:2100}
+#progressFill{width:100%;height:0;background:linear-gradient(180deg,var(--accent),#d4d4b8);transition:height .06s linear;border-radius:999px}
 
-/* slim progress indicator on right (visual only) */
-#progressSlim{position:fixed;right:18px;top:56px;width:8px;height:68vh;background:rgba(255,255,255,0.03);border-radius:999px;overflow:hidden;z-index:1600}
-#progressFill{width:100%;height:0;background:linear-gradient(180deg,var(--accent),#d4d4b8);transition:height .08s linear;border-radius:999px}
-
-/* TOC panel (collapsible) */
-#tocPanel{position:fixed;left:24px;top:80px;width:260px;max-height:68vh;overflow:auto;background:linear-gradient(180deg,#070708,var(--panel));border-radius:10px;padding:12px;box-shadow:var(--card-shadow);z-index:1400;display:none}
-#tocPanel h4{margin:0 0 8px 0;font-family:'Playfair Display',serif}
-.tocItem{display:block;padding:8px;border-radius:8px;color:var(--muted);cursor:pointer}
-.tocItem:hover{background:rgba(255,255,255,0.02);color:var(--accent)}
-
-/* small utilities */
-.small{padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03);cursor:pointer;font-weight:700}
-.hidden{display:none}
-
-/* cover modal for import */
-#coverModal{display:none;position:fixed;inset:0;align-items:center;justify-content:center;z-index:2200;background:rgba(0,0,0,0.6)}
-.modalCard{width:760px;max-width:94%;background:#fff;border-radius:10px;padding:18px;color:#111;box-shadow:0 30px 100px rgba(0,0,0,0.6)}
-.modal-grid{display:flex;gap:12px;align-items:center}
+/* cover modal (simple) */
+#coverModal{display:none;position:fixed;inset:0;align-items:center;justify-content:center;z-index:3000;background:rgba(0,0,0,0.6)}
+.modalCard{width:720px;max-width:94%;background:#fff;padding:18px;border-radius:10px;color:#111;box-shadow:0 30px 100px rgba(0,0,0,0.6)}
+.modal-grid{display:flex;gap:12px}
 .preview{width:220px;height:320px;border-radius:8px;overflow:hidden;background:#f4f4f4;display:flex;align-items:center;justify-content:center}
-.preview img{width:100%;height:100%;object-fit:cover;display:block}
+.preview img{width:100%;height:100%;object-fit:cover}
 
-/* responsive tweaks */
-@media (max-width:900px){
+/* responsive */
+@media(max-width:900px){
   #sidebar{display:none}
-  #tocPanel{display:none}
-  #readerOverlay{inset:24px}
+  .chapter-placeholder{min-height:40vh}
+  #readerCard{padding:20px}
   #readingInner{padding:18px;max-width:calc(100% - 48px)}
   #progressSlim{display:none}
 }
 </style>
 </head>
 <body>
-
-<!-- ========== APP STRUCTURE ========== -->
 <div id="app">
-
-  <!-- SIDEBAR (original aesthetic) -->
   <aside id="sidebar">
     <h1>Comick Library</h1>
-
     <div class="controls">
       <label class="add-btn">Select EPUB<input id="epubInput" type="file" accept=".epub"></label>
       <label class="add-btn">Upload Cover (opt.)<input id="coverInput" type="file" accept="image/*"></label>
-
       <div style="display:flex;gap:8px">
-        <button id="addSeriesBtn" class="add-btn">Add</button>
-        <button id="downloadAllBtn" class="add-btn">Download All</button>
-        <button id="openTocBtn" class="add-btn" title="Toggle TOC">TOC</button>
+        <button id="addBtn" class="add-btn">Add</button>
+        <button id="downloadAll" class="add-btn">Download All</button>
       </div>
     </div>
-
     <div id="statusMsg">Ready</div>
-
-    <!-- small tile area (kept for quick nav, but not the main grid) -->
-    <div id="tiles" style="margin-top:12px"></div>
+    <div id="tiles"></div>
   </aside>
 
-  <!-- MAIN: library grid + reader overlay -->
   <main id="main">
     <div class="headerRow">
       <h2>Your Library</h2>
-      <div style="color:var(--muted);font-size:13px">Click to open • Right-click to delete • Resumes automatically • Desktop-first</div>
+      <div style="color:var(--muted);font-size:13px">Click to open • Right-click to delete • Press Esc to exit reader</div>
     </div>
 
-    <!-- Grid (single authoritative library display) -->
     <div id="libraryGrid" class="libraryGrid"></div>
-
   </main>
 </div>
 
-<!-- READER OVERLAY (centered, exitable) -->
-<div id="readerOverlay" role="dialog" aria-modal="true" aria-hidden="true">
-  <div id="readerCard">
+<!-- Reader overlay -->
+<div id="readerOverlay" aria-hidden="true">
+  <div id="readerCard" role="dialog">
     <div id="readerHeader">
       <div>
         <h2 id="bookTitle">Series</h2>
-        <div id="bookSub" style="font-size:13px;color:var(--muted)"></div>
+        <div id="bookMeta" style="font-size:13px;color:var(--muted)"></div>
       </div>
-
       <div class="controls-inline">
-        <button id="colsToggle" class="small" title="Toggle columns">≋</button>
-        <button id="fontDec" class="small" title="Decrease font">A-</button>
-        <button id="fontInc" class="small" title="Increase font">A+</button>
-        <button id="fullscreenBtn" class="small" title="Toggle Fullscreen">⤢</button>
-        <button id="downloadBtn" class="small" title="Download EPUB">Download</button>
-        <button id="closeBtn" class="small" title="Close reader">Exit</button>
+        <button id="colsBtn" class="add-btn">Cols</button>
+        <button id="fontDown" class="add-btn">A-</button>
+        <button id="fontUp" class="add-btn">A+</button>
+        <button id="downloadBtn" class="add-btn">Download</button>
+        <button id="exitBtn" class="add-btn">Exit</button>
       </div>
     </div>
 
-    <div id="readerScroller" tabindex="0">
-      <div id="readingInner" aria-live="polite"></div>
+    <div id="readerScroller">
+      <div id="readingInner"></div>
     </div>
   </div>
 
@@ -229,826 +146,378 @@ a{color:inherit}
   </div>
 </div>
 
-<!-- Progress visual -->
 <div id="progressSlim"><div id="progressFill"></div></div>
 
-<!-- TOC panel -->
-<div id="tocPanel" aria-hidden="true">
-  <h4>Table of contents</h4>
-  <div id="tocList"></div>
-</div>
-
-<!-- cover preview modal -->
+<!-- cover modal -->
 <div id="coverModal">
   <div class="modalCard">
-    <div style="font-weight:700;margin-bottom:8px">Choose cover (preview)</div>
+    <div style="font-weight:700;margin-bottom:8px">Choose cover</div>
     <div class="modal-grid">
       <div class="preview" id="coverPreview"><span style="color:#777">No cover</span></div>
       <div style="flex:1">
-        <div id="coverInfo" style="color:#222;margin-bottom:8px">Auto-detected cover (if any). Upload to replace or click Add Book.</div>
-        <input id="coverUpload" type="file" accept="image/*">
+        <div id="coverInfo" style="margin-bottom:8px;color:#222">Detected cover (if any). Upload to replace or click Add Book.</div>
+        <input id="coverChoosen" type="file" accept="image/*">
         <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
-          <button id="coverCancel" class="small">Cancel</button>
-          <button id="coverConfirm" class="small">Add Book</button>
+          <button id="coverCancel" class="add-btn">Cancel</button>
+          <button id="coverAdd" class="add-btn">Add Book</button>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- cover reveal on open (small flourish) -->
-<div id="coverOverlay" class="hidden" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:1800;pointer-events:none">
-  <div style="width:70vw;max-width:840px;border-radius:12px;overflow:hidden;box-shadow:0 40px 140px rgba(0,0,0,0.85)">
-    <img id="coverRevealImg" src="" style="width:100%;height:auto;display:block" alt="cover">
-  </div>
-</div>
-
 <script>
-/* ==========================
-   COMICK — Final Introspection Build
-   - All major issues fixed (see conversation)
-   - Robust EPUB parsing + lazy hydration
-   - Desktop-first wide reader, native scrollbar, slim visual progress
-   - Exitable overlay (Esc / click outside / Exit)
-   - TOC, font controls, columns, fullscreen, download
-   - IndexedDB storage of EPUB blobs + progress + cover
-   - localStorage for UI prefs
-   - Lots of comments for maintainability (you asked for larger code)
-   ========================== */
+/*
+  Comick — final clean build
+  - Single-file
+  - Native scrollbar + slim progress
+  - Wide reader, stable placeholders, exit routes fixed
+  - Simple IndexedDB persistence
+  - JSZip for EPUB parsing
+*/
 
-/* -------------- Persistence layer: IndexedDB -------------- */
-const DB_NAME = 'comick_final_introspection_v1';
-const STORE = 'books';
-let db = null;
-async function openDB(){
-  if(db) return db;
-  return new Promise((resolve, reject) => {
-    const rq = indexedDB.open(DB_NAME, 1);
-    rq.onupgradeneeded = e => {
-      const d = e.target.result;
-      if(!d.objectStoreNames.contains(STORE)) d.createObjectStore(STORE, { keyPath: 'id' });
-    };
-    rq.onsuccess = e => { db = e.target.result; resolve(db); };
-    rq.onerror = e => reject(e);
-  });
-}
-async function putObj(obj){
-  await openDB();
-  return new Promise((res,rej) => {
-    const tx = db.transaction(STORE,'readwrite');
-    const r = tx.objectStore(STORE).put(obj);
-    r.onsuccess = () => res();
-    r.onerror = rej;
-  });
-}
-async function getAll(){
-  await openDB();
-  return new Promise(res => {
-    const tx = db.transaction(STORE,'readonly');
-    tx.objectStore(STORE).getAll().onsuccess = e => res(e.target.result || []);
-  });
-}
-async function getById(id){
-  await openDB();
-  return new Promise(res => {
-    const tx = db.transaction(STORE,'readonly');
-    tx.objectStore(STORE).get(id).onsuccess = e => res(e.target.result);
-  });
-}
-async function deleteById(id){
-  await openDB();
-  return new Promise((res,rej) => {
-    const tx = db.transaction(STORE,'readwrite');
-    tx.objectStore(STORE).delete(id).onsuccess = () => res();
-    tx.onerror = rej;
-  });
-}
+/* ======= IndexedDB helpers ======= */
+const DB = 'comick_clean_v1', STORE='series';
+let db=null;
+async function openDB(){ if(db) return db; return new Promise((res,rej)=>{ const r=indexedDB.open(DB,1); r.onupgradeneeded=e=>{ const d=e.target.result; if(!d.objectStoreNames.contains(STORE)) d.createObjectStore(STORE,{keyPath:'id'}); }; r.onsuccess=e=>{ db=e.target.result; res(db); }; r.onerror=rej; });}
+async function putObj(o){ await openDB(); return new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readwrite'); const r=tx.objectStore(STORE).put(o); r.onsuccess=()=>res(); r.onerror=rej; });}
+async function getAll(){ await openDB(); return new Promise(res=>{ const tx=db.transaction(STORE,'readonly'); tx.objectStore(STORE).getAll().onsuccess=e=>res(e.target.result || []); });}
+async function getById(id){ await openDB(); return new Promise(res=>{ const tx=db.transaction(STORE,'readonly'); tx.objectStore(STORE).get(id).onsuccess=e=>res(e.target.result); });}
+async function deleteById(id){ await openDB(); return new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readwrite'); const r=tx.objectStore(STORE).delete(id); r.onsuccess=()=>res(); r.onerror=rej; });}
 
-/* -------------- DOM references -------------- */
-const epubInput = document.getElementById('epubInput');
-const coverInput = document.getElementById('coverInput');
-const addSeriesBtn = document.getElementById('addSeriesBtn');
-const downloadAllBtn = document.getElementById('downloadAllBtn');
-const openTocBtn = document.getElementById('openTocBtn');
+/* ======= DOM refs ======= */
+const epubInput = document.getElementById('epubInput'), coverInput = document.getElementById('coverInput');
+const addBtn = document.getElementById('addBtn'), downloadAll = document.getElementById('downloadAll');
+const tiles = document.getElementById('tiles'), libraryGrid = document.getElementById('libraryGrid'), statusMsg = document.getElementById('statusMsg');
 
-const statusMsg = document.getElementById('statusMsg');
-const tiles = document.getElementById('tiles');
-const libraryGrid = document.getElementById('libraryGrid');
-
-const readerOverlay = document.getElementById('readerOverlay');
-const readerCard = document.getElementById('readerCard');
-const readerScroller = document.getElementById('readerScroller');
-const readingInner = document.getElementById('readingInner');
-const bookTitle = document.getElementById('bookTitle');
-const bookSub = document.getElementById('bookSub');
-
-const colsToggle = document.getElementById('colsToggle');
-const fontInc = document.getElementById('fontInc'), fontDec = document.getElementById('fontDec');
-const fullscreenBtn = document.getElementById('fullscreenBtn');
-const downloadBtn = document.getElementById('downloadBtn');
-const closeBtn = document.getElementById('closeBtn');
-
+const readerOverlay = document.getElementById('readerOverlay'), readerScroller = document.getElementById('readerScroller');
+const readingInner = document.getElementById('readingInner'), bookTitle = document.getElementById('bookTitle'), bookMeta = document.getElementById('bookMeta');
+const exitBtn = document.getElementById('exitBtn'), downloadBtn = document.getElementById('downloadBtn');
 const prevBtn = document.getElementById('prevBtn'), nextBtn = document.getElementById('nextBtn');
 const progressFill = document.getElementById('progressFill');
+const colsBtn = document.getElementById('colsBtn'), fontUp = document.getElementById('fontUp'), fontDown = document.getElementById('fontDown');
 
-const tocPanel = document.getElementById('tocPanel'), tocList = document.getElementById('tocList'), openToc = document.getElementById('openTocBtn');
+const coverModal = document.getElementById('coverModal'), coverPreview = document.getElementById('coverPreview'), coverChoosen = document.getElementById('coverChoosen'), coverAdd = document.getElementById('coverAdd'), coverCancel = document.getElementById('coverCancel');
 
-const coverModal = document.getElementById('coverModal'), coverPreview = document.getElementById('coverPreview'), coverUpload = document.getElementById('coverUpload');
-const coverInfo = document.getElementById('coverInfo'), coverConfirm = document.getElementById('coverConfirm'), coverCancel = document.getElementById('coverCancel');
+let library = [], pendingImport = null, current = null, zip=null, chapters=[], observer=null, currentIndex=0;
 
-const coverOverlay = document.getElementById('coverOverlay'), coverRevealImg = document.getElementById('coverRevealImg');
-
-/* -------------- State -------------- */
-let library = [];               // list from IndexedDB
-let pendingImport = null;       // temp object when importing EPUB
-let current = null;             // current book object loaded from DB
-let zip = null;                 // JSZip instance for current book
-let chapters = [];              // array of {href, idref, title}
-let observer = null;            // intersection observer for lazy hydration
-let currentIndex = 0;           // visible chapter index
-let toc = [];                   // table-of-contents (generated)
-let prefs = {                   // persisted UI prefs
-  fontSize: localStorage.getItem('comick_font_size') || '18',
-  columns: localStorage.getItem('comick_columns') || '1'
-};
-
-/* tiny helpers */
-function uid(){ return 'b_' + Date.now() + '_' + Math.random().toString(36,8).slice(2,8); }
+/* small utils */
+function uid(){ return 's_'+Date.now()+'_'+Math.random().toString(36).slice(2,8); }
 function showStatus(t){ statusMsg.textContent = t; }
-function escapeHtml(s){ return (''+s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[m])); }
-function readAsArrayBuffer(file){ return new Promise((res,rej)=>{ const r = new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsArrayBuffer(file); });}
-function readAsDataURL(file){ return new Promise((res,rej)=>{ const r = new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); });}
-function downloadBlob(blob, name){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1200); }
+function readAB(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsArrayBuffer(file); });}
+function readDataUrl(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); });}
+function dlBlob(b,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1200); }
 
-/* -------------- ZIP / EPUB parsing helpers -------------- */
-/* tryGetFile: flexible lookup with fallback checks */
-function tryGetFile(z, path){
+/* ======= EPUB helpers (reliable) ======= */
+function tryGetFile(z,path){
   if(!path) return null;
   if(z.file(path)) return z.file(path);
-  try{ const d = decodeURIComponent(path); if(z.file(d)) return z.file(d); }catch(e){}
-  const p = path.replace(/^\.\//,'').replace(/^\/+/,'');
+  try{ const d=decodeURIComponent(path); if(z.file(d)) return z.file(d);}catch(e){}
+  const p=path.replace(/^\.\//,'').replace(/^\/+/,'');
   if(z.file(p)) return z.file(p);
-  const name = p.split('/').pop();
-  const keys = Object.keys(z.files);
-  const found = keys.find(k => k.endsWith('/'+name) || k.endsWith(name));
-  return found ? z.file(found) : null;
+  const name=p.split('/').pop();
+  const keys=Object.keys(z.files);
+  const found=keys.find(k=>k.endsWith('/'+name)||k.endsWith(name));
+  return found? z.file(found) : null;
 }
-function xmlParse(txt){
-  try{ return (new DOMParser()).parseFromString(txt, 'application/xml'); }catch(e){ return null; }
-}
+function xmlParse(s){ try{ return (new DOMParser()).parseFromString(s,'application/xml'); }catch(e){ return null; } }
 async function findOpf(z){
-  const container = tryGetFile(z, 'META-INF/container.xml') || tryGetFile(z,'container.xml');
-  if(!container) return null;
-  const txt = await container.async('string');
-  const doc = xmlParse(txt);
+  const c = tryGetFile(z,'META-INF/container.xml') || tryGetFile(z,'container.xml');
+  if(!c) return null;
+  const txt = await c.async('string'); const doc = xmlParse(txt);
   if(!doc) return null;
   const rf = doc.getElementsByTagName('rootfile')[0];
   if(rf && rf.getAttribute) return rf.getAttribute('full-path');
-  const all = doc.getElementsByTagName('*');
-  for(const n of all) if(n.localName === 'rootfile' && n.getAttribute){ const p = n.getAttribute('full-path'); if(p) return p; }
+  const all=doc.getElementsByTagName('*');
+  for(const n of all) if(n.localName==='rootfile' && n.getAttribute){ const p=n.getAttribute('full-path'); if(p) return p; }
   return null;
 }
-
-/* Read OPF manifest & spine: solid fallback logic */
 async function readSpine(z){
   const opfPath = await findOpf(z);
   if(!opfPath) throw new Error('OPF not found');
   const opfFile = tryGetFile(z, opfPath);
   if(!opfFile) throw new Error('OPF file missing: ' + opfPath);
-  const opfStr = await opfFile.async('string');
-  const opfDoc = xmlParse(opfStr);
-  if(!opfDoc) throw new Error('OPF parse failed');
+  const opfStr = await opfFile.async('string'); const opfDoc = xmlParse(opfStr); if(!opfDoc) throw new Error('OPF parse failed');
   const base = opfPath.split('/').slice(0,-1).join('/');
-  const manifest = {};
-  const manEls = opfDoc.getElementsByTagName('manifest');
-  const items = manEls.length ? manEls[0].getElementsByTagName('item') : opfDoc.getElementsByTagName('item');
-  for(const it of items){
-    const id = it.getAttribute('id') || it.getAttribute('xml:id') || '';
-    manifest[id] = { href: it.getAttribute('href'), type: it.getAttribute('media-type'), props: it.getAttribute('properties') || '' };
-  }
-  const spineEls = opfDoc.getElementsByTagName('spine');
-  const refs = spineEls.length ? spineEls[0].getElementsByTagName('itemref') : opfDoc.getElementsByTagName('itemref');
-  const spineList = [];
-  for(const r of refs) {
-    const idref = r.getAttribute('idref') || r.getAttribute('id') || r.getAttribute('href') || '';
-    if(idref) spineList.push(idref);
-  }
-  if(spineList.length === 0){
-    // fallback: try to use manifest HTML items
-    for(const k in manifest){
-      const m = manifest[k];
-      if(m.type && (m.type.includes('html')||m.type.includes('xhtml')||m.type.includes('xml'))) spineList.push(k);
-    }
-  }
+  const manifest = {}; const manEls = opfDoc.getElementsByTagName('manifest'); const items = manEls.length ? manEls[0].getElementsByTagName('item') : opfDoc.getElementsByTagName('item');
+  for(const it of items){ const id = it.getAttribute('id') || it.getAttribute('xml:id') || ''; manifest[id] = { href: it.getAttribute('href'), type: it.getAttribute('media-type'), props: it.getAttribute('properties') || ''}; }
+  const spineEls = opfDoc.getElementsByTagName('spine'); const refs = spineEls.length ? spineEls[0].getElementsByTagName('itemref') : opfDoc.getElementsByTagName('itemref');
+  const spineList=[];
+  for(const r of refs){ const idref = r.getAttribute('idref') || r.getAttribute('id') || r.getAttribute('href') || ''; if(idref) spineList.push(idref); }
+  if(spineList.length===0){ for(const k in manifest){ const m = manifest[k]; if(m.type && (m.type.includes('html')||m.type.includes('xhtml')||m.type.includes('xml'))) spineList.push(k); } }
   return { base, manifest, spineList, opfDoc };
 }
-
-/* Build chapters array from manifest + spine list */
-function buildChapters(base, manifest, spineList){
-  const out = [];
+function buildChaps(base,manifest,spineList){
+  const out=[];
   for(const idref of spineList){
     let item = manifest[idref];
-    if(!item){
-      for(const k in manifest) if(k===idref || manifest[k].href===idref) item = manifest[k];
-    }
+    if(!item){ for(const k in manifest) if(k===idref || manifest[k].href===idref) item=manifest[k]; }
     if(!item) continue;
-    out.push({ href: (base? base + '/' : '') + item.href, idref, title: item.href });
+    out.push({ href:(base? base + '/':'') + item.href, idref, title:item.href });
   }
-  if(out.length === 0){
-    for(const k in manifest){
-      const it = manifest[k];
-      if(it.type && it.type.includes('html')) out.push({ href: (base? base + '/':'') + it.href, idref:k, title: it.href });
-    }
-  }
+  if(out.length===0){ for(const k in manifest){ const it=manifest[k]; if(it.type && it.type.includes('html')) out.push({ href:(base? base + '/':'')+it.href, idref:k, title:it.href }); } }
   return out;
 }
-
-/* Load chapter HTML, inline CSS & images where possible.
-   Note: parse as XML first, fallback to text/html for messy HTML.
-*/
-async function loadChapterHTML(z, base, href){
-  const file = tryGetFile(z, href) || tryGetFile(z, decodeURIComponent(href));
-  if(!file) throw new Error('Chapter missing: ' + href);
-  const raw = await file.async('string');
-  let doc;
+async function loadChapter(z, base, href){
+  const file = tryGetFile(z, href) || tryGetFile(z, decodeURIComponent(href)); if(!file) throw new Error('Chapter missing: ' + href);
+  const raw = await file.async('string'); let doc;
   try{ doc = (new DOMParser()).parseFromString(raw,'application/xml'); }catch(e){ doc = (new DOMParser()).parseFromString(raw,'text/html'); }
-  if(!doc) throw new Error('Parse failed for: ' + href);
-
-  // INLINE CSS referenced by <link rel="stylesheet"> (best-effort)
+  if(!doc) throw new Error('Parse failed');
+  // inline basic CSS links (best-effort)
   const links = Array.from(doc.getElementsByTagName('link'));
   for(const link of links){
-    const rel = (link.getAttribute('rel')||'').toLowerCase();
-    if(rel === 'stylesheet'){
-      const cssHref = link.getAttribute('href') || '';
-      const candidates = [(base? base + '/':'') + cssHref, cssHref, decodeURIComponent(cssHref)];
-      let cssFile = null;
-      for(const c of candidates){ cssFile = tryGetFile(z,c); if(cssFile) break; }
-      if(cssFile){
-        try{
-          const css = await cssFile.async('string');
-          const style = doc.createElement('style');
-          style.textContent = css;
-          link.parentNode.replaceChild(style, link);
-        }catch(e){ link.remove(); }
-      } else link.remove();
+    const rel=(link.getAttribute('rel')||'').toLowerCase();
+    if(rel==='stylesheet'){
+      const hrefc=link.getAttribute('href')||'';
+      const candidates=[(base? base + '/':'')+hrefc, hrefc, decodeURIComponent(hrefc)];
+      let f=null; for(const c of candidates){ f = tryGetFile(z,c); if(f) break; }
+      if(f){ try{ const css = await f.async('string'); const s = doc.createElement('style'); s.textContent = css; link.parentNode.replaceChild(s, link); }catch(e){ link.remove(); } } else link.remove();
     }
   }
-
-  // INLINE images: convert image entries to blob URLs (lazy loaded)
+  // inline images as blob: lazy
   const imgs = Array.from(doc.getElementsByTagName('img'));
   for(const img of imgs){
-    const src = img.getAttribute('src') || '';
-    if(!src) continue;
-    const candidates = [(base? base + '/':'') + src, src, decodeURIComponent(src)];
-    let f = null;
-    for(const c of candidates){ f = tryGetFile(z,c); if(f) break; }
-    if(f){
-      try{
-        const blob = await f.async('blob');
-        const url = URL.createObjectURL(blob);
-        img.setAttribute('src', url);
-        img.setAttribute('loading','lazy');
-      }catch(e){ /* ignore image failures */ }
-    }
+    const src = img.getAttribute('src') || ''; if(!src) continue;
+    const candidates=[(base? base + '/':'')+src, src, decodeURIComponent(src)]; let f=null; for(const c of candidates){ f = tryGetFile(z,c); if(f) break; }
+    if(f){ try{ const blob = await f.async('blob'); const url = URL.createObjectURL(blob); img.setAttribute('src', url); img.setAttribute('loading','lazy'); }catch(e){} }
   }
-
-  // Serialize body
-  const serializer = new XMLSerializer();
-  const bodies = doc.getElementsByTagName('body');
-  let html = '';
-  if(bodies && bodies.length) html = serializer.serializeToString(bodies[0]).replace(/^<body[^>]*>/i,'').replace(/<\/body>$/i,'');
-  else html = serializer.serializeToString(doc);
-  // Title extraction (title tag or first h1)
-  const t = doc.getElementsByTagName('title')[0] || (doc.querySelector && doc.querySelector('h1'));
-  const title = t ? (t.textContent||'').trim() : href.split('/').pop();
-  return { title, html };
+  const serializer = new XMLSerializer(); const bodies = doc.getElementsByTagName('body'); let html = '';
+  if(bodies && bodies.length) html = serializer.serializeToString(bodies[0]).replace(/^<body[^>]*>/i,'').replace(/<\/body>$/i,''); else html = serializer.serializeToString(doc);
+  const ttl = doc.getElementsByTagName('title')[0] || (doc.querySelector && doc.querySelector('h1')); const title = ttl ? (ttl.textContent||'').trim() : href.split('/').pop();
+  return { html, title };
 }
 
-/* Try extract cover (multiple heuristics) */
-async function extractCoverBestEffort(z, opfDoc, manifest, base){
+/* try to extract cover image (best-effort) */
+async function tryExtractCover(z, opfDoc, manifest, base){
   try{
-    // 1) <meta name="cover" content="id" />
     const metas = opfDoc.getElementsByTagName('meta');
-    for(const m of metas){
-      if((m.getAttribute('name')||'').toLowerCase() === 'cover'){
-        const id = m.getAttribute('content');
-        if(id && manifest[id]){
-          const f = tryGetFile(z, (base? base + '/':'') + manifest[id].href) || tryGetFile(z, manifest[id].href);
-          if(f){ const blob = await f.async('blob'); return await toDataURL(blob); }
-        }
-      }
-    }
+    for(const m of metas){ if((m.getAttribute('name')||'').toLowerCase()==='cover'){ const id=m.getAttribute('content'); if(id && manifest[id]){ const f= tryGetFile(z,(base? base + '/':'')+manifest[id].href) || tryGetFile(z, manifest[id].href); if(f){ const blob=await f.async('blob'); return await toDataURL(blob);} } } }
   }catch(e){}
   try{
-    // 2) properties='cover-image'
-    for(const k in manifest){
-      const it = manifest[k];
-      if(it.props && (''+it.props).includes('cover-image')){
-        const f = tryGetFile(z, (base? base + '/':'') + it.href) || tryGetFile(z, it.href);
-        if(f){ const blob = await f.async('blob'); return await toDataURL(blob); }
-      }
-    }
-    // 3) href contains 'cover' and media type is image
-    for(const k in manifest){
-      const it = manifest[k];
-      if((it.href||'').toLowerCase().includes('cover') && (it.type||'').startsWith('image')){
-        const f = tryGetFile(z, (base? base + '/':'') + it.href) || tryGetFile(z, it.href);
-        if(f){ const blob = await f.async('blob'); return await toDataURL(blob); }
-      }
-    }
+    for(const k in manifest){ const it = manifest[k]; if(it.props && (''+it.props).includes('cover-image')){ const f = tryGetFile(z,(base? base + '/':'')+it.href) || tryGetFile(z,it.href); if(f){ const blob=await f.async('blob'); return await toDataURL(blob); } } }
+    for(const k in manifest){ const it = manifest[k]; if((it.href||'').toLowerCase().includes('cover') && it.type && it.type.startsWith('image')){ const f=tryGetFile(z,(base? base + '/':'')+it.href) || tryGetFile(z,it.href); if(f){ const blob=await f.async('blob'); return await toDataURL(blob); } } }
   }catch(e){}
   return null;
 }
-function toDataURL(blob){ return new Promise(res=>{ const r = new FileReader(); r.onload = ()=>res(r.result); r.readAsDataURL(blob); }); }
+function toDataURL(blob){ return new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.readAsDataURL(blob); });}
 
-/* -------------- Library rendering -------------- */
-
-/* renderLibrary: authoritative single grid (no duplicates) */
+/* ======= Render library (single grid) ======= */
 async function renderLibrary(){
-  libraryGrid.innerHTML = '';
+  libraryGrid.innerHTML=''; tiles.innerHTML='';
   showStatus('Loading library...');
   const list = await getAll().catch(()=>[]);
-  library = (list||[]).sort((a,b)=>(a.title||'').localeCompare(b.title||''));
-  if(library.length === 0){
-    libraryGrid.innerHTML = `<div style="color:var(--muted);padding:28px">Library empty — import an EPUB</div>`;
-    showStatus('Ready');
-    return;
-  }
+  library = (list||[]).sort((a,b)=> (a.title||'').localeCompare(b.title||''));
+  if(library.length===0){ libraryGrid.innerHTML = `<div style="color:var(--muted);padding:28px">No books — import an EPUB</div>`; showStatus('Ready'); return; }
   for(const b of library){
-    const card = document.createElement('div');
-    card.className = 'grid-card';
-    const cover = b.cover || generatePlaceholderDataUrl(b.title);
-    card.innerHTML = `
-      <div class="grid-cover"><img src="${cover}" alt="${escapeHtml(b.title||'Untitled')}"></div>
-      <div class="grid-title">${escapeHtml(b.title||'Untitled')}</div>
-      <div style="display:flex;justify-content:space-between;color:var(--muted)"><div>${(b.lastIndex && b.lastIndex>0)? 'Resume':'New'}</div><div>${b.epub && b.epub.size ? Math.round((b.epub.size||0)/1024)+'KB' : '—'}</div></div>
-    `;
-    // open on click
+    const card = document.createElement('div'); card.className='grid-card';
+    const cover = b.cover || placeholder(b.title);
+    card.innerHTML = `<div class="grid-cover"><img src="${cover}" alt=""></div><div class="grid-title">${escape(b.title)}</div><div style="display:flex;justify-content:space-between;color:var(--muted)"><div>${b.lastIndex?'Resume':'New'}</div><div>${b.epub && b.epub.size? Math.round(b.epub.size/1024)+'KB':'—'}</div></div>`;
     card.addEventListener('click', ()=> openWithReveal(b.id));
-    // right-click delete (explicit)
-    card.addEventListener('contextmenu', e => {
-      e.preventDefault();
-      if(confirm(`Delete "${b.title}"? This will remove the EPUB and saved progress.`)){
-        deleteById(b.id).then(()=> renderLibrary());
-      }
-    });
+    card.addEventListener('contextmenu', e=>{ e.preventDefault(); if(confirm('Delete "'+b.title+'"?')) deleteById(b.id).then(()=>renderLibrary()); });
     libraryGrid.appendChild(card);
+    // small tile
+    const t = document.createElement('div'); t.className='tile'; t.innerHTML = `<img src="${cover}">`; t.addEventListener('click', ()=> openWithReveal(b.id)); tiles.appendChild(t);
   }
-  // build small tiles for quick nav in sidebar (but not duplicate full grid)
-  renderTilesSmall(library);
   showStatus('Ready');
 }
+function placeholder(title){ return 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='800' height='1000'><rect width='100%' height='100%' fill='#0b0b0d'/><text x='50%' y='52%' font-size='28' fill='#efe7c9' text-anchor='middle' font-family='Playfair Display'>${escape(title||'Untitled')}</text></svg>`); }
+function escape(s){ return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[m])); }
 
-/* small sidebar tiles (keeps the feel of original) */
-function renderTilesSmall(list){
-  tiles.innerHTML = '';
-  for(const b of list.slice(0,8)){ // show up to 8 quick tiles
-    const t = document.createElement('div'); t.style.marginBottom = '12px';
-    t.innerHTML = `<div style="border-radius:8px;overflow:hidden;cursor:pointer"><img src="${b.cover || generatePlaceholderDataUrl(b.title)}" style="width:100%;height:120px;object-fit:cover;display:block"></div>`;
-    t.addEventListener('click', ()=> openWithReveal(b.id));
-    tiles.appendChild(t);
-  }
-}
-
-/* placeholder cover image generator for missing covers */
-function generatePlaceholderDataUrl(title){
-  return 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='800' height='1000'><rect width='100%' height='100%' fill='#0b0b0d'/><text x='50%' y='52%' font-size='28' fill='#efe7c9' text-anchor='middle' font-family='Playfair Display'>${escapeHtml(title||'Untitled')}</text></svg>`);
-}
-
-/* -------------- Import flow: cover detection + confirmation modal -------------- */
-/* Keep import steps clear: choose EPUB -> we try auto-extract cover -> open modal -> user can replace -> Add Book saves */
-epubInput.addEventListener('change', async (ev) => {
-  const f = epubInput.files[0];
-  if(!f) return;
+/* ======= Import flow: detect cover, show modal, allow upload or accept placeholder ======= */
+epubInput.addEventListener('change', async ()=>{
+  const f = epubInput.files[0]; if(!f) return;
   try{
-    showStatus('Scanning EPUB for OPF and cover...');
-    const arrayBuffer = await readAsArrayBuffer(f);
-    const loadedZip = await JSZip.loadAsync(arrayBuffer);
-    // try read OPF to detect cover
-    let opfMeta = null;
-    try{ opfMeta = await readSpine(loadedZip); }catch(e){ opfMeta = null; }
-    let detected = null;
-    if(opfMeta && opfMeta.opfDoc !== undefined){ // opfDoc included in readSpine
-      try{ detected = await extractCoverBestEffort(loadedZip, opfMeta.opfDoc, opfMeta.manifest, opfMeta.base); }catch(e){ detected = null; }
-    }
-    pendingImport = { file: f, arrayBuffer, zip: loadedZip, opfMeta, coverDetected: detected, chosenCover: detected || null };
-    // if user already selected a separate cover file in coverInput, use it
-    if(coverInput.files && coverInput.files[0]){
-      pendingImport.chosenCover = await readAsDataURL(coverInput.files[0]);
-      await finalizeAdd(); // immediate save
-      return;
-    }
-    // show modal with preview (detected or placeholder)
-    coverPreview.innerHTML = detected ? `<img src="${detected}" style="width:100%;height:100%;object-fit:cover">` : `<span style="color:#777">No cover detected</span>`;
-    coverInfo.textContent = detected ? 'Auto-detected cover. Upload to replace or click Add Book.' : 'No cover found — upload an image or click Add Book to proceed with placeholder.';
-    coverUpload.value = '';
-    coverModal.style.display = 'flex';
-  }catch(err){
-    console.error('Import error', err);
-    alert('Failed to read EPUB: ' + (err.message || err));
-    epubInput.value = '';
-    pendingImport = null;
-    showStatus('Ready');
-  }
+    showStatus('Scanning EPUB for cover...');
+    const ab = await readAB(f); const z = await JSZip.loadAsync(ab);
+    let opfMeta=null; try{ opfMeta = await readSpine(z); }catch(e){ opfMeta=null; }
+    let detected=null; if(opfMeta && opfMeta.opfDoc!==undefined){ try{ detected = await tryExtractCover(z, opfMeta.opfDoc, opfMeta.manifest, opfMeta.base); }catch(e){ detected = null; } }
+    pendingImport = { file:f, arrayBuffer:ab, zip:z, opf:opfMeta, chosenCover:detected || null };
+    // if user already uploaded a separate cover in coverInput, use it immediately
+    if(coverInput.files && coverInput.files[0]){ pendingImport.chosenCover = await readDataUrl(coverInput.files[0]); await finalizeAdd(); return; }
+    // show modal for user to accept/change cover
+    coverPreview.innerHTML = detected ? `<img src="${detected}" style="width:100%;height:100%;object-fit:cover">` : '<span style="color:#777">No cover</span>';
+    document.getElementById('coverInfo').textContent = detected ? 'Auto-detected cover. Upload to replace or click Add Book.' : 'No cover detected — upload or proceed with placeholder.';
+    coverChoosen.value=''; coverModal.style.display='flex';
+  }catch(e){ console.error(e); alert('Failed to read EPUB: '+(e.message||e)); epubInput.value=''; pendingImport = null; showStatus('Ready'); }
 });
 
-/* modal events */
-coverUpload.addEventListener('change', async ()=>{
-  const f = coverUpload.files[0]; if(!f) return;
-  const durl = await readAsDataURL(f);
-  coverPreview.innerHTML = `<img src="${durl}" style="width:100%;height:100%;object-fit:cover">`;
-  if(pendingImport) pendingImport.chosenCover = durl;
-});
-coverCancel.addEventListener('click', ()=>{ coverModal.style.display='none'; pendingImport=null; epubInput.value=''; showStatus('Ready'); });
-coverConfirm.addEventListener('click', async ()=>{
-  coverModal.style.display='none';
-  await finalizeAdd();
-});
+coverChoosen.addEventListener('change', async ()=>{ const f = coverChoosen.files[0]; if(!f) return; const d = await readDataUrl(f); coverPreview.innerHTML = `<img src="${d}" style="width:100%;height:100%;object-fit:cover">`; if(pendingImport) pendingImport.chosenCover = d; });
+coverCancel.addEventListener('click', ()=>{ coverModal.style.display='none'; pendingImport = null; epubInput.value=''; showStatus('Ready'); });
+coverAdd.addEventListener('click', async ()=>{ coverModal.style.display='none'; await finalizeAdd(); });
 
-/* finalize add: store book blob and optional cover, set lastIndex to 0 */
 async function finalizeAdd(){
   if(!pendingImport) return;
   try{
     showStatus('Saving book...');
-    const id = uid();
-    const title = (pendingImport.file && pendingImport.file.name) ? pendingImport.file.name.replace(/\.epub$/i,'') : id;
-    const blob = new Blob([pendingImport.arrayBuffer], { type: 'application/epub+zip' });
+    const id = uid(); const title = pendingImport.file.name.replace(/\.epub$/i,'') || id;
+    const blob = new Blob([pendingImport.arrayBuffer], { type:'application/epub+zip' });
     const cover = pendingImport.chosenCover || null;
     await putObj({ id, title, epub: blob, cover, lastIndex: 0 });
-    // reset
-    pendingImport = null;
-    epubInput.value = '';
-    coverInput.value = '';
+    pendingImport = null; epubInput.value=''; coverInput.value='';
     await renderLibrary();
     showStatus('Ready');
-  }catch(e){
-    console.error('Save failed', e);
-    alert('Save failed: '+(e.message||e));
-    showStatus('Ready');
-  }
+  }catch(e){ console.error(e); alert('Save failed'); showStatus('Ready'); }
 }
 
-/* -------------- Open flow: reveal cover then open reader -------------- */
-async function openWithReveal(id){
-  const b = await getById(id);
-  if(!b) return alert('Book missing');
-  // small reveal flourish: show cover in center then open reader
-  coverRevealImg.src = b.cover || generatePlaceholderDataUrl(b.title);
-  coverOverlay.style.pointerEvents = 'auto'; coverOverlay.classList.remove('hidden');
-  setTimeout(()=> {
-    coverOverlay.classList.add('hidden'); coverOverlay.style.pointerEvents = 'none';
-    openReader(id);
-  }, 450);
-}
-
-/* -------------- Reader open + hydration (robust) -------------- */
-async function openReader(id){
-  showStatus('Preparing reader...');
-  try{
-    current = await getById(id);
-    if(!current) throw new Error('Book missing');
-    bookTitle.textContent = current.title || 'Book';
-    bookSub.textContent = '';
-
-    // load zip and spine
-    zip = await JSZip.loadAsync(await current.epub.arrayBuffer());
-    const sp = await readSpine(zip);
-    chapters = buildChapters(sp.base, sp.manifest, sp.spineList);
-
-    if(chapters.length === 0){
-      alert('No readable chapters found');
-      return;
-    }
-
-    // prepare readingInner: placeholders with stable min-heights to avoid jump
-    readingInner.innerHTML = '';
-    for(let i=0;i<chapters.length;i++){
-      const ph = document.createElement('div');
-      ph.className = 'chapter-placeholder';
-      ph.dataset.idx = i;
-      // stable placeholder height: proportional; prevents layout jumps during hydration
-      ph.style.minHeight = Math.round(Math.max(220, window.innerHeight * 0.22)) + 'px';
-      ph.style.padding = '18px 0';
-      ph.style.color = 'var(--muted)';
-      ph.textContent = chapters[i].title || ('Chapter ' + (i+1));
-      readingInner.appendChild(ph);
-    }
-
-    // attach overlay / show
-    readerOverlay.style.display = 'flex';
-    readerOverlay.setAttribute('aria-hidden','false');
-    // apply persisted prefs
-    readingInner.style.fontSize = (prefs.fontSize || '18') + 'px';
-    readingInner.style.columnCount = prefs.columns || '1';
-    // setup intersection observer for lazy hydration
-    if(observer) observer.disconnect();
-    observer = new IntersectionObserver(async entries => {
-      for(const e of entries){
-        if(e.isIntersecting){
-          const idx = Number(e.target.dataset.idx);
-          if(!e.target.classList.contains('chapter-loaded')) await hydrateChapter(idx);
-        }
-      }
-    }, { root: readerScroller, rootMargin: '800px', threshold: 0.02 });
-    Array.from(readingInner.querySelectorAll('.chapter-placeholder')).forEach(el => observer.observe(el));
-
-    // restore progress position
-    currentIndex = (current.lastIndex && current.lastIndex < chapters.length) ? current.lastIndex : 0;
-    await hydrateChapter(currentIndex); // ensure current is ready
-    if(currentIndex+1 < chapters.length) hydrateChapter(currentIndex+1); // prefetch next
-    setTimeout(()=> scrollToChapter(currentIndex, false), 220);
-
-    // build TOC (early)
-    toc = []; tocList.innerHTML = '';
-    // we will populate toc as we hydrate (from heading elements), but put initial placeholders
-    // attach scroll listener
-    readerScroller.addEventListener('scroll', throttledUpdateProgress);
-    showStatus('Ready');
-  }catch(e){
-    console.error('Open reader error', e);
-    alert('Failed to open book: ' + (e.message||e));
-    showStatus('Ready');
-  }
-}
-
-/* hydrateChapter: load HTML, inline assets, inject into placeholder without DOM replacement (keeps references) */
-async function hydrateChapter(idx){
-  if(!zip || !chapters[idx]) return;
-  const ph = readingInner.querySelector('.chapter-placeholder[data-idx="'+idx+'"]');
-  if(!ph) return;
-  if(ph.classList.contains('chapter-loaded')) return;
-  ph.classList.add('chapter-loaded');
-  try{
-    const base = chapters[idx].href.split('/').slice(0,-1).join('/');
-    const res = await loadChapterHTML(zip, base, chapters[idx].href);
-    // keep same node, change classes
-    ph.classList.remove('chapter-placeholder');
-    ph.classList.add('chapter');
-    ph.dataset.idx = idx;
-    ph.innerHTML = `<div class="chapter-title">${escapeHtml(res.title)}</div><div class="chapter-body">${res.html}</div>`;
-    // ensure paragraphs exist (fallback)
-    const body = ph.querySelector('.chapter-body');
-    const hasBlocks = body.querySelectorAll('p,div,section,article').length > 0;
-    if(!hasBlocks){
-      const txt = (body.textContent||'').trim();
-      body.innerHTML = ''; const p = document.createElement('p'); p.textContent = txt || '(no extractable text)'; body.appendChild(p);
-    } else {
-      const pCount = body.querySelectorAll('p').length;
-      if(pCount === 0){
-        const blocks = Array.from(body.children);
-        body.innerHTML = '';
-        blocks.forEach(b => { const p = document.createElement('p'); p.innerHTML = b.innerHTML || b.textContent || ''; body.appendChild(p); });
-      }
-    }
-    // images: lazy + styles
-    const imgs = ph.querySelectorAll('img');
-    imgs.forEach(img => { img.loading = 'lazy'; img.style.maxWidth = '100%'; img.style.height = 'auto'; img.style.display='block'; img.style.margin='12px auto'; });
-
-    // add to TOC from headings inside the chapter (h1/h2/h3)
-    const headings = ph.querySelectorAll('h1,h2,h3');
-    headings.forEach(h => {
-      const text = h.textContent.trim();
-      const id = 'toc_' + idx + '_' + Math.random().toString(36).slice(2,8);
-      h.id = id;
-      toc.push({ id, title: text, idx });
-    });
-    refreshTOC();
-
-    // reveal animations for paragraphs
-    setTimeout(()=> ph.classList.add('visible'), 60);
-    const ps = ph.querySelectorAll('.chapter-body p');
-    ps.forEach((p,i) => setTimeout(()=> p.classList.add('visible'), 80 + i*12));
-
-    // done
-  }catch(e){
-    console.error('Hydrate failed', e);
-    ph.textContent = 'Failed to load chapter';
-  }
-}
-
-/* refreshTOC: render toc list (collated headings) */
-function refreshTOC(){
-  if(toc.length === 0) { tocList.innerHTML = '<div style="color:var(--muted)">No headings detected yet</div>'; return; }
-  tocList.innerHTML = '';
-  toc.forEach(item => {
-    const el = document.createElement('div');
-    el.className = 'tocItem';
-    el.textContent = item.title;
-    el.addEventListener('click', ()=> {
-      // jump to heading inside reader
-      const target = document.getElementById(item.id);
-      if(target){
-        const rr = readerScroller.getBoundingClientRect(), tr = target.getBoundingClientRect();
-        const top = (tr.top - rr.top) + readerScroller.scrollTop - 30; // small offset
-        readerScroller.scrollTo({ top, behavior: 'smooth' });
-      }
-    });
-    tocList.appendChild(el);
+/* ======= Open flow: reveal cover briefly then open reader ======= */
+function openWithReveal(id){
+  getById(id).then(b=>{
+    if(!b) return alert('Book missing');
+    // show a very brief cover reveal (visual flourish) then open reader
+    const overlay = document.createElement('div'); overlay.style.position='fixed'; overlay.style.inset='0'; overlay.style.display='flex'; overlay.style.alignItems='center'; overlay.style.justifyContent='center'; overlay.style.zIndex='2500'; overlay.style.background='rgba(0,0,0,0.5)';
+    const card = document.createElement('div'); card.style.width='70vw'; card.style.maxWidth='900px'; card.style.borderRadius='12px'; card.style.overflow='hidden'; card.style.boxShadow='0 40px 140px rgba(0,0,0,0.85)';
+    const img = document.createElement('img'); img.src = b.cover || placeholder(b.title); img.style.width='100%'; img.style.display='block';
+    card.appendChild(img); overlay.appendChild(card); document.body.appendChild(overlay);
+    setTimeout(()=>{ document.body.removeChild(overlay); openReader(b.id); }, 420);
   });
 }
 
-/* -------------- Scrolling & Progress -------------- */
-/* accurate overall progress of readerScroller */
+/* ======= Open reader: prepare placeholders + observer + handlers ======= */
+async function openReader(id){
+  try{
+    showStatus('Preparing reader...');
+    current = await getById(id);
+    if(!current) throw new Error('Book missing');
+    bookTitle.textContent = current.title || 'Book';
+    bookMeta.textContent = '';
+    // load zip + spine
+    zip = await JSZip.loadAsync(await current.epub.arrayBuffer());
+    const sp = await readSpine(zip);
+    chapters = buildChaps(sp.base, sp.manifest, sp.spineList);
+    if(chapters.length===0){ alert('No readable chapters'); return; }
+    // create placeholders (stable height to prevent jumps)
+    readingInner.innerHTML = '';
+    for(let i=0;i<chapters.length;i++){
+      const d = document.createElement('div'); d.className='chapter-placeholder'; d.dataset.idx = i; d.style.minHeight = '60vh'; d.style.padding = '18px'; d.style.color = 'var(--muted)'; d.textContent = chapters[i].title || ('Chapter ' + (i+1));
+      readingInner.appendChild(d);
+    }
+    // show overlay
+    readerOverlay.style.display = 'flex'; readerOverlay.setAttribute('aria-hidden','false');
+    // attach observer for lazy hydration
+    if(observer) observer.disconnect();
+    observer = new IntersectionObserver(async entries=>{
+      for(const e of entries){ if(e.isIntersecting){ const idx = Number(e.target.dataset.idx); if(!e.target.classList.contains('chapter-loaded')) await hydrateChapter(idx); } }
+    }, { root: readerScroller, rootMargin: '700px', threshold: 0.02 });
+    Array.from(readingInner.querySelectorAll('.chapter-placeholder')).forEach(el => observer.observe(el));
+    // restore last index
+    currentIndex = (current.lastIndex>=0 && current.lastIndex < chapters.length) ? current.lastIndex : 0;
+    await hydrateChapter(currentIndex);
+    if(currentIndex+1 < chapters.length) hydrateChapter(currentIndex+1);
+    setTimeout(()=> scrollToIndex(currentIndex, false), 220);
+    // attach scroll listener
+    readerScroller.addEventListener('scroll', throttledUpdateProgress);
+    showStatus('Ready');
+  }catch(e){ console.error(e); alert('Failed to open reader: ' + (e.message||e)); showStatus('Ready'); }
+}
+
+/* hydrate chapter in-place (no node replacement) */
+async function hydrateChapter(idx){
+  if(!zip || !chapters[idx]) return;
+  const placeholder = readingInner.querySelector('.chapter-placeholder[data-idx="'+idx+'"]');
+  if(!placeholder) return;
+  if(placeholder.classList.contains('chapter-loaded')) return;
+  placeholder.classList.add('chapter-loaded');
+  try{
+    const base = chapters[idx].href.split('/').slice(0,-1).join('/');
+    const res = await loadChapter(zip, base, chapters[idx].href);
+    placeholder.classList.remove('chapter-placeholder'); placeholder.classList.add('chapter'); placeholder.dataset.idx = idx;
+    placeholder.innerHTML = `<div class="chapter-title">${escape(chapters[idx].title || res.title || 'Chapter '+(idx+1))}</div><div class="chapter-body">${res.html}</div>`;
+    // ensure sensible paragraphs if none exist
+    const body = placeholder.querySelector('.chapter-body');
+    const has = body.querySelectorAll('p,div,section,article').length > 0;
+    if(!has){ const t = (body.textContent||'').trim(); body.innerHTML=''; const p=document.createElement('p'); p.textContent = t || '(no text)'; body.appendChild(p); }
+    // images style
+    const imgs = placeholder.querySelectorAll('img'); imgs.forEach(img=>{ img.loading='lazy'; img.style.maxWidth='100%'; img.style.height='auto'; img.style.display='block'; img.style.margin='12px auto'; });
+    // reveal
+    setTimeout(()=> placeholder.classList.add('visible'), 60);
+  }catch(e){ console.error('hydrate fail', e); placeholder.textContent='Failed to load chapter'; }
+}
+
+/* scroll progress logic */
 function updateProgress(){
   const st = readerScroller.scrollTop;
   const sh = readerScroller.scrollHeight - readerScroller.clientHeight;
-  const pct = sh > 0 ? Math.round((st / sh) * 100) : 0;
+  const pct = sh>0 ? Math.round((st/sh)*100) : 0;
   progressFill.style.height = pct + '%';
-  // derive current visible chapter by largest visible portion
-  const chaptersNodes = Array.from(readingInner.querySelectorAll('.chapter, .chapter-placeholder'));
+  // detect active chapter
+  const nodes = Array.from(readingInner.querySelectorAll('.chapter, .chapter-placeholder'));
   let best = { idx: 0, vis: 0 };
   const rr = readerScroller.getBoundingClientRect();
-  for(const c of chaptersNodes){
+  for(const c of nodes){
     const r = c.getBoundingClientRect();
     const vis = Math.max(0, Math.min(r.bottom, rr.bottom) - Math.max(r.top, rr.top));
     if(vis > best.vis) best = { idx: Number(c.dataset.idx), vis };
   }
-  if(best.idx !== currentIndex){
-    currentIndex = best.idx;
-    if(current) { current.lastIndex = currentIndex; putObj(current).catch(()=>{}); } // persist
-  }
+  if(best.idx !== currentIndex){ currentIndex = best.idx; if(current){ current.lastIndex = currentIndex; putObj(current).catch(()=>{}); } }
 }
-
-/* throttled version to avoid thrashing */
 const throttledUpdateProgress = throttle(updateProgress, 90);
 
-/* scrollToChapter: scroll to a given chapter index */
-function scrollToChapter(idx, smooth=true){
+/* scrollToIndex */
+function scrollToIndex(idx, smooth=true){
   const el = readingInner.querySelector('.chapter[data-idx="'+idx+'"], .chapter-placeholder[data-idx="'+idx+'"]');
   if(!el) return;
   const rr = readerScroller.getBoundingClientRect(), er = el.getBoundingClientRect();
-  const top = (er.top - rr.top) + readerScroller.scrollTop - 8; // small offset
+  const top = (er.top - rr.top) + readerScroller.scrollTop - 8;
   readerScroller.scrollTo({ top: Math.max(0, top), behavior: smooth ? 'smooth' : 'auto' });
-  // persist index
   currentIndex = idx;
   if(current){ current.lastIndex = currentIndex; putObj(current).catch(()=>{}); }
 }
 
-/* -------------- Reader controls (font, columns, fullscreen, navigation) -------------- */
-fontInc.addEventListener('click', ()=> adjustFont(2));
-fontDec.addEventListener('click', ()=> adjustFont(-2));
-function adjustFont(delta){
-  const currentSize = parseFloat(prefs.fontSize || 18);
-  const newSize = Math.max(14, Math.min(28, currentSize + delta));
-  prefs.fontSize = newSize;
-  readingInner.style.fontSize = newSize + 'px';
-  localStorage.setItem('comick_font_size', newSize);
+/* prev/next */
+prevBtn.addEventListener('click', ()=>{ if(currentIndex>0) scrollToIndex(currentIndex-1); });
+nextBtn.addEventListener('click', ()=>{ if(currentIndex < chapters.length-1) scrollToIndex(currentIndex+1); });
+
+/* close reader: detach listeners, disconnect observer, clear nodes */
+function closeReader(){
+  readerOverlay.style.display='none'; readerOverlay.setAttribute('aria-hidden','true');
+  try{ readerScroller.removeEventListener('scroll', throttledUpdateProgress); }catch(e){}
+  if(observer){ observer.disconnect(); observer=null; }
+  readingInner.innerHTML=''; zip=null; chapters=[]; current=null;
 }
+exitBtn.addEventListener('click', closeReader);
+/* close by backdrop click */
+readerOverlay.addEventListener('click', (e)=>{ if(e.target === readerOverlay) closeReader(); });
+/* close by Escape */
+document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && readerOverlay.style.display==='flex') closeReader(); });
 
-/* columns toggle (1/2) */
-colsToggle.addEventListener('click', ()=> {
-  prefs.columns = (prefs.columns === '2') ? '1' : '2';
-  readingInner.style.columnCount = prefs.columns;
-  localStorage.setItem('comick_columns', prefs.columns);
-});
+/* font & columns */
+let fontSize = 18, columns = 1;
+fontUp.addEventListener('click', ()=>{ fontSize = Math.min(28, fontSize+2); readingInner.style.fontSize = fontSize+'px';});
+fontDown.addEventListener('click', ()=>{ fontSize = Math.max(14, fontSize-2); readingInner.style.fontSize = fontSize+'px';});
+colsBtn.addEventListener('click', ()=>{ columns = columns===1 ? 2 : 1; readingInner.style.columnCount = columns; readingInner.style.columnGap = '40px';});
 
-/* fullscreen toggle */
-fullscreenBtn.addEventListener('click', async ()=>{
-  if(!document.fullscreenElement) {
-    try{ await readerCard.requestFullscreen(); }catch(e){ /* ignore */ }
-  } else {
-    try{ await document.exitFullscreen(); }catch(e){ /* ignore */ }
-  }
-});
-
-/* download current EPUB */
+/* download current */
 downloadBtn.addEventListener('click', async ()=>{
   if(!current) return alert('Open a book first');
   const s = await getById(current.id);
-  if(!s || !s.epub) return alert('EPUB missing');
+  if(!s||!s.epub) return alert('EPUB missing');
   const blob = s.epub instanceof Blob ? s.epub : new Blob([s.epub], { type:'application/epub+zip' });
-  downloadBlob(blob, (s.title||'book') + '.epub');
+  dlBlob(blob, (s.title||'book') + '.epub');
 });
 
-/* prev/next chapter */
-prevBtn.addEventListener('click', ()=> { if(currentIndex>0) scrollToChapter(currentIndex - 1); });
-nextBtn.addEventListener('click', ()=> { if(currentIndex < chapters.length - 1) scrollToChapter(currentIndex + 1); });
+/* small helper: open with reveal already uses openReader */
 
-/* close / exit */
-closeBtn.addEventListener('click', closeReader);
-
-/* closeReader: cleans observers, listeners, and hides overlay */
-function closeReader(){
-  readerOverlay.style.display = 'none';
-  readerOverlay.setAttribute('aria-hidden','true');
-  readerScroller.removeEventListener('scroll', throttledUpdateProgress);
-  if(observer){ observer.disconnect(); observer = null; }
-  readingInner.innerHTML = '';
-  current = null; zip = null; chapters = []; toc = [];
-  // hide TOC panel too
-  tocPanel.style.display = 'none';
-}
-
-/* keyboard shortcuts: Esc to exit, arrows/page to navigate */
-document.addEventListener('keydown', (e) => {
-  if(readerOverlay.style.display === 'flex'){
-    if(e.key === 'Escape') { closeReader(); }
-    else if(e.key === 'ArrowRight' || e.key === 'PageDown'){ if(currentIndex < chapters.length - 1) scrollToChapter(currentIndex + 1); }
-    else if(e.key === 'ArrowLeft' || e.key === 'PageUp'){ if(currentIndex > 0) scrollToChapter(currentIndex - 1); }
-    else if(e.key === ' '){ // space for page down
-      e.preventDefault(); readerScroller.scrollBy({ top: Math.round(readerScroller.clientHeight*0.7), behavior: 'smooth' });
-    }
-  }
-});
-
-/* clicking outside the readerCard closes reader (backdrop click) */
-readerOverlay.addEventListener('click', (e) => {
-  if(e.target === readerOverlay) closeReader();
-});
-
-/* -------------- TOC toggle -------------- */
-openTocBtn.addEventListener('click', ()=> {
-  if(tocPanel.style.display === 'block'){ tocPanel.style.display = 'none'; tocPanel.setAttribute('aria-hidden','true'); }
-  else { tocPanel.style.display = 'block'; tocPanel.setAttribute('aria-hidden','false'); }
-});
-
-/* -------------- Download all books as zip -------------- */
-downloadAllBtn.addEventListener('click', async ()=> {
+/* download all functionality */
+downloadAll.addEventListener('click', async ()=>{
   const all = await getAll();
-  if(!all || all.length === 0) return alert('No books');
+  if(!all || all.length===0) return alert('No books');
   const z = new JSZip();
   for(const b of all) if(b.epub) z.file((b.title||b.id)+'.epub', b.epub);
   const blob = await z.generateAsync({type:'blob'});
-  downloadBlob(blob, 'comick_library.zip');
+  dlBlob(blob, 'comick_library.zip');
 });
 
-/* -------------- Helper: throttle -------------- */
-function throttle(fn, wait=120){
-  let t = null;
-  return (...args) => {
-    if(t) return;
-    t = setTimeout(()=> { t = null; fn(...args); }, wait);
-  };
-}
+/* revoke objectURLs for inlined images on close (cleanup) */
+/* not implemented here for brevity; if memory becomes issue, add tracking and revoke */
 
-/* -------------- Small UI helpers -------------- */
-function generateId() { return Math.random().toString(36).slice(2,9); }
+/* utility throttle */
+function throttle(fn, wait=120){ let t=null; return (...a)=>{ if(t) return; t=setTimeout(()=>{ t=null; fn(...a); }, wait); }; }
 
-/* -------------- Start-up: init DB, render library, apply prefs -------------- */
+/* initial render */
 (async function init(){
-  try{
-    await openDB();
-    // apply prefs to readingInner (if reader opens later)
-    readingInner.style.fontSize = (prefs.fontSize || 18) + 'px';
-    readingInner.style.columnCount = prefs.columns || '1';
-    await renderLibrary();
-    showStatus('Ready — test import with any EPUB');
-  }catch(e){ console.error('Init', e); showStatus('Error initializing'); }
+  try{ await openDB(); await renderLibrary(); showStatus('Ready'); }catch(e){ console.error('Init fail', e); showStatus('Init error'); }
 })();
 
-/* -------------- Utilities: import + immediate add button fallback -------------- */
-/* "Add" quick fallback: if user picks EPUB and clicks Add button (rare), finalizeAdd handles it */
-addSeriesBtn.addEventListener('click', async ()=>{
-  if(pendingImport){
-    await finalizeAdd();
-    return;
-  }
-  // no pending import: prompt to choose file
-  epubInput.click();
-});
-
-/* finalizeAdd (also usable if user didn't go through modal) */
-async function finalizeAdd(){
-  if(!pendingImport) return;
-  try{
-    showStatus('Saving book...');
-    const id = uid();
-    const title = (pendingImport.file && pendingImport.file.name) ? pendingImport.file.name.replace(/\.epub$/i,'') : id;
-    const blob = new Blob([pendingImport.arrayBuffer], { type: 'application/epub+zip' });
-    const cover = pendingImport.chosenCover || null;
-    await putObj({ id, title, epub: blob, cover, lastIndex: 0 });
-    pendingImport = null;
-    epubInput.value = ''; coverInput.value = '';
-    await renderLibrary();
-    showStatus('Ready');
-  }catch(e){
-    console.error('finalizeAdd fail', e);
-    alert('Save failed: ' + (e.message||e));
-    showStatus('Ready');
-  }
-}
-
-/* For safety: if user uploads separate cover in sidebar control */
-coverInput.addEventListener('change', async ()=>{
-  if(coverInput.files && coverInput.files[0]){
-    // store chosen cover as data url to be used if user imports an EPUB next
-    const d = await readAsDataURL(coverInput.files[0]);
-    // immediate note to user (temp only)
-    alert('Cover uploaded — it will be used automatically for the next EPUB import (or you can choose another at import).');
-    // store in pendingImport if exists
-    if(pendingImport) pendingImport.chosenCover = d;
-  }
-});
-
-/* Small utility: handle clicking a grid card → ensure modal shows if cover extraction required */
-/* (We already created openWithReveal/openReader flows above) */
-
-/* -------------- Final housekeeping comments --------------
-  - The file intentionally contains more comments and logic to be easier to debug / extend.
-  - If you want the readingInner padding changed exactly, change --reader-padding at the top.
-  - If a particular EPUB behaves oddly, provide that EPUB or tell me the exact failing chapter href, and I'll patch the parser heuristics for that case.
-  - This build keeps native scrollbar + a slim progress indicator — you told me you wanted both UX clarity and aesthetics.
------------------------------------------------------------ */
 </script>
 </body>
 </html>
