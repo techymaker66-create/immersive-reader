@@ -3,112 +3,104 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Comick — Hybrid Reader (Polished)</title>
+<title>Comick — Clean Reader</title>
 <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <style>
-  :root{
-    --bg:#071018; --panel:#0f1318; --muted:#98a0a6; --text:#efe7c9;
-    --accent:#efe7c9; --glass:rgba(255,255,255,0.03); --card-shadow:0 24px 80px rgba(0,0,0,0.66);
-    --radius:12px; --measure:60ch; --reader-padding:44px;
-    --reader-width:880px;
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),#020305);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; -webkit-font-smoothing:antialiased}
-  a{color:inherit;text-decoration:none}
-  /* App shell */
-  header.appbar{
-    position:fixed;left:0;right:0;top:0;height:64px;display:flex;align-items:center;padding:10px 18px;gap:12px;
-    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));backdrop-filter:blur(6px);z-index:1200;
-    border-bottom:1px solid rgba(255,255,255,0.02)
-  }
-  .brand{display:flex;gap:10px;align-items:center}
-  .logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#0b2233,#071726);display:flex;align-items:center;justify-content:center;font-family:'Merriweather',serif;font-weight:700}
-  .appTitle{font-family:'Merriweather',serif;font-size:18px}
-  .controls{margin-left:auto;display:flex;gap:8px;align-items:center}
-  .btn{padding:8px 12px;border-radius:10px;background:var(--glass);border:1px solid rgba(255,255,255,0.04);cursor:pointer;font-weight:600}
-  .input{padding:8px 12px;border-radius:10px;background:transparent;border:1px solid rgba(255,255,255,0.03);color:var(--muted);outline:none}
-  /* Layout */
-  .app{display:flex;min-height:100vh}
-  aside.sidebar{width:300px;padding:84px 18px 18px 18px;background:linear-gradient(180deg,#04060a,var(--panel));border-right:1px solid rgba(255,255,255,0.02);overflow:auto}
-  main.center{flex:1;padding:84px 28px;display:flex;flex-direction:column;align-items:center;gap:18px}
-  .libraryGrid{width:100%;max-width:1200px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px}
-  .card{background:linear-gradient(180deg, rgba(255,255,255,0.008), rgba(255,255,255,0.003));padding:12px;border-radius:12px;box-shadow:var(--card-shadow);display:flex;flex-direction:column;gap:10px}
-  .cardCover{height:240px;border-radius:8px;overflow:hidden;background:#071018}
-  .cardCover img{width:100%;height:100%;object-fit:cover;display:block}
-  .cardTitle{font-family:'Merriweather',serif;font-weight:700}
-  .cardMeta{display:flex;justify-content:space-between;color:var(--muted);font-size:13px}
-  .tileGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;margin-top:12px}
-  .tile{position:relative;border-radius:10px;overflow:hidden;min-height:140px;background:#081217;cursor:pointer}
-  /* Reader overlay (distinct reading space) */
-  .reader-overlay{
-    position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:1400;
-    background:linear-gradient(180deg, rgba(2,4,6,0.75), rgba(2,4,6,0.82));backdrop-filter: blur(6px);
-  }
-  .reader-card{
-    width:calc(var(--reader-width) + 2 * var(--reader-padding));
-    max-width:calc(100% - 48px);
-    border-radius:14px;background:var(--panel);box-shadow:0 40px 140px rgba(0,0,0,0.75);overflow:hidden;
-    transform:scale(.98);opacity:0;transition:transform .28s,opacity .28s;
-    display:flex;flex-direction:column;
-  }
-  .reader-card.show{transform:scale(1);opacity:1}
-  .reader-header{
-    display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);
-    border-bottom:1px solid rgba(255,255,255,0.02)
-  }
-  .reader-title{font-family:'Merriweather',serif;font-size:16px}
-  .reader-controls{display:flex;gap:8px;align-items:center}
-  .control-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03);cursor:pointer;font-weight:600}
-  /* reader body (isolated scroller) */
-  .reader-body{display:flex;justify-content:center;padding:var(--reader-padding);background:linear-gradient(180deg, rgba(255,255,255,0.006), rgba(255,255,255,0.002));}
-  #readerFrame{
-    width:var(--reader-width); max-width:100%; height:70vh; overflow:auto; background:linear-gradient(180deg,#fbfbfb,#fff); color:#111;
-    border-radius:10px;padding:var(--reader-padding); box-shadow:0 10px 40px rgba(0,0,0,0.45); font-family:'Merriweather', Georgia, serif; font-size:18px; line-height:1.78;
-  }
-  /* Hybrid visual: subtle paper edge */
-  .reader-card.dark #readerFrame{ background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.006)); color:var(--text) }
-  .reader-card.light #readerFrame{ background:#fefefe; color:#111 }
-  /* chapters & typography */
-  .chapter{margin:28px 0;padding:0;opacity:0;transform:translateY(6px);transition:all .36s}
-  .chapter.visible{opacity:1;transform:none}
-  .chapter-title{font-family:'Merriweather',serif;font-size:20px;margin:12px 0;color:inherit}
-  .chapter-body{max-width:var(--measure);margin:0 auto;text-align:left}
-  .chapter-body p{margin:0 0 1.05em;opacity:0;transform:translateY(6px);transition:opacity .28s,transform .28s}
-  .chapter-body p.visible{opacity:1;transform:none}
-  /* drop cap at wide screens for premium feel */
-  @media (min-width:900px){
-    .chapter-body p:first-of-type::first-letter{float:left;font-size:62px;line-height:54px;padding-right:12px;padding-top:6px;font-weight:700}
-  }
-  .chapter-body img{max-width:100%;height:auto;display:block;margin:10px auto;border-radius:8px}
-  /* top progress within reader card */
-  .progress-wrap{height:6px;background:rgba(0,0,0,0.06);border-radius:6px;overflow:hidden;flex:0 0 6px;margin:0}
-  .progress-fill{height:100%;width:0;background:linear-gradient(90deg,#ffea9a,#efe7c9);transition:width .16s linear}
-  .progress-meta{font-size:13px;color:var(--muted);padding:8px 14px}
-  /* floating quick controls bottom-right inside overlay */
-  .reader-floating{position:absolute;right:28px;bottom:28px;display:flex;gap:10px;z-index:1410}
-  .round-btn{width:46px;height:46px;border-radius:12px;background:rgba(255,255,255,0.02);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.03);cursor:pointer;font-weight:700}
-  /* simple responsive */
-  @media (max-width:1100px){ .reader-card{width:calc(100% - 48px)} .reader-body{padding:24px} #readerFrame{height:68vh} }
-  @media (max-width:760px){ #readerFrame{height:72vh;padding:20px;font-size:16px} .chapter-body p:first-of-type::first-letter{display:none} }
+:root{
+  --bg:#071018; --panel:#0e1216; --muted:#98a0a6; --text:#efe7c9;
+  --accent:#efe7c9; --glass:rgba(255,255,255,0.03);
+  --reader-width:880px; --reader-padding:40px; --measure:60ch; --radius:12px;
+  --card-shadow:0 30px 100px rgba(0,0,0,0.7);
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),#020305);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial}
+a{color:inherit}
+header.appbar{
+  position:fixed;left:0;right:0;top:0;height:64px;display:flex;align-items:center;padding:10px 18px;gap:12px;
+  background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));backdrop-filter:blur(6px);z-index:1000;border-bottom:1px solid rgba(255,255,255,0.02)
+}
+.brand{display:flex;gap:10px;align-items:center}
+.logo{width:42px;height:42px;border-radius:8px;background:linear-gradient(135deg,#0b2233,#071726);display:flex;align-items:center;justify-content:center;font-family:'Merriweather',serif;font-weight:700}
+.controls{margin-left:auto;display:flex;gap:8px;align-items:center}
+.btn{padding:8px 12px;border-radius:10px;background:var(--glass);border:1px solid rgba(255,255,255,0.04);cursor:pointer;font-weight:600}
+.search{padding:8px 12px;border-radius:10px;background:transparent;border:1px solid rgba(255,255,255,0.03);color:var(--muted);outline:none}
+
+/* App layout */
+.app{display:flex;min-height:100vh}
+aside.sidebar{width:300px;padding:84px 18px;background:linear-gradient(180deg,#04060a,var(--panel));border-right:1px solid rgba(255,255,255,0.02);overflow:auto}
+main.center{flex:1;padding:94px 28px;display:flex;flex-direction:column;align-items:center;gap:18px}
+.libraryGrid{width:100%;max-width:1200px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px}
+.card{background:linear-gradient(180deg, rgba(255,255,255,0.008), rgba(255,255,255,0.003));padding:12px;border-radius:12px;box-shadow:var(--card-shadow);display:flex;flex-direction:column;gap:10px}
+.cardCover{height:220px;border-radius:8px;overflow:hidden;background:#071018}
+.cardCover img{width:100%;height:100%;object-fit:cover;display:block}
+.cardTitle{font-family:'Merriweather',serif;font-weight:700}
+.cardMeta{display:flex;justify-content:space-between;color:var(--muted);font-size:13px}
+
+/* READER OVERLAY - focused and detached */
+.reader-overlay{
+  position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:1400;
+  background:linear-gradient(180deg, rgba(2,4,6,0.78), rgba(2,4,6,0.86));backdrop-filter:blur(6px)
+}
+.reader-panel{
+  width:calc(var(--reader-width) + 2*var(--reader-padding));max-width:calc(100% - 48px);
+  border-radius:14px;background:var(--panel);box-shadow:var(--card-shadow);overflow:hidden;transform:scale(.98);opacity:0;transition:transform .24s ease,opacity .24s ease;
+  display:flex;flex-direction:column;
+}
+.reader-panel.show{transform:scale(1);opacity:1}
+.reader-header{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid rgba(255,255,255,0.03)}
+.reader-title{font-family:'Merriweather',serif;font-size:16px}
+.reader-controls{display:flex;gap:8px;align-items:center}
+.pill{padding:8px 10px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03);cursor:pointer;font-weight:600}
+
+/* progress area */
+.progress-bar{height:6px;background:rgba(255,255,255,0.03);overflow:hidden;border-radius:6px}
+.progress-fill{height:100%;width:0;background:linear-gradient(90deg,#ffd99e,#efe7c9);transition:width .14s linear}
+.progress-meta{font-size:13px;color:var(--muted);padding:8px 12px}
+
+/* reader content: isolated scroller */
+.reader-body{display:flex;justify-content:center;padding:var(--reader-padding);background:linear-gradient(180deg, rgba(255,255,255,0.006), rgba(255,255,255,0.002))}
+#readerFrame{
+  width:var(--reader-width);max-width:100%;height:72vh;overflow:auto;background:#fff;border-radius:10px;padding:var(--reader-padding);
+  color:#111; font-family:'Merriweather',Georgia,serif;font-size:18px;line-height:1.78; -webkit-font-smoothing:antialiased;
+  column-fill:auto;
+}
+#readerFrame.dark{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.006));color:var(--text)}
+.chapter{margin:28px 0;opacity:0;transform:translateY(6px);transition:all .36s}
+.chapter.visible{opacity:1;transform:none}
+.chapter-title{font-family:'Merriweather',serif;font-size:20px;margin-bottom:8px}
+.chapter-body{max-width:var(--measure);margin:0 auto;text-align:left}
+.chapter-body p{margin:0 0 1.05em;opacity:0;transform:translateY(6px);transition:opacity .28s,transform .28s}
+.chapter-body p.visible{opacity:1;transform:none}
+.chapter-body img{max-width:100%;height:auto;display:block;margin:12px auto;border-radius:6px}
+@media (min-width:900px){
+  .chapter-body p:first-of-type::first-letter{float:left;font-size:56px;line-height:52px;padding-right:10px;padding-top:6px;font-weight:700}
+}
+
+/* floating controls bottom-right inside overlay */
+.reader-float{position:absolute;right:20px;bottom:20px;display:flex;gap:8px;z-index:1450}
+.round{width:44px;height:44px;border-radius:10px;background:rgba(255,255,255,0.02);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.03);cursor:pointer;font-weight:700}
+
+/* responsive tweaks */
+@media (max-width:1100px){ aside.sidebar{display:none} .reader-panel{width:calc(100% - 48px)} #readerFrame{height:70vh} }
+@media (max-width:760px){ #readerFrame{height:74vh;padding:20px;font-size:16px} .chapter-body p:first-of-type::first-letter{display:none} }
 </style>
 </head>
 <body>
 <header class="appbar">
-  <div class="brand"><div class="logo">C</div><div><div class="appTitle">Comick</div><div style="font-size:12px;color:var(--muted)">Hybrid Reader — Focused UI</div></div></div>
-  <input id="searchInput" class="input" placeholder="Search library (press Enter)">
+  <div class="brand"><div class="logo">C</div><div><div class="appTitle">Comick</div><div style="font-size:12px;color:var(--muted)">Clean Reader</div></div></div>
+  <input id="search" class="search" placeholder="Search titles — press Enter">
   <div class="controls">
-    <label class="btn">Import EPUB<input id="epubInput" type="file" accept=".epub" style="display:none;"></label>
+    <label class="btn">Import EPUB<input id="epubInput" type="file" accept=".epub" style="display:none"></label>
     <button id="prefsBtn" class="btn">Prefs</button>
-    <button id="openReaderBtn" class="btn" style="display:none;">Open Reader</button>
   </div>
 </header>
 
 <div class="app">
   <aside class="sidebar" id="sidebar">
     <div style="font-weight:700;font-family:'Merriweather',serif;margin-bottom:8px">Library</div>
-    <div id="tiles" class="tileGrid"></div>
-    <div style="margin-top:18px;color:var(--muted);font-size:13px">Right-click a book to delete • Click to open</div>
+    <div id="tiles"></div>
+    <div style="margin-top:18px;color:var(--muted);font-size:13px">Right-click to delete • Click to open</div>
   </aside>
 
   <main class="center">
@@ -116,139 +108,86 @@
   </main>
 </div>
 
-<!-- Reader overlay (distinct reading space) -->
+<!-- Reader overlay -->
 <div id="readerOverlay" class="reader-overlay" aria-hidden="true">
-  <div id="readerCard" class="reader-card dark" role="dialog" aria-modal="true">
+  <div id="readerPanel" class="reader-panel">
     <div class="reader-header">
-      <div style="display:flex;align-items:center;gap:10px">
+      <div style="display:flex;align-items:center;gap:12px">
         <div class="reader-title" id="readerTitle">Book</div>
-        <div class="progress-meta" id="progressMeta" style="margin-left:12px;color:var(--muted)">Chapter 0 / 0 • 0%</div>
+        <div class="progress-meta" id="progressMeta">0 / 0 • 0%</div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div class="control-pill" id="themeToggle">Theme</div>
-        <div class="control-pill" id="columnsBtn">Columns</div>
-        <div class="control-pill" id="exitReader">Exit</div>
+      <div class="reader-controls">
+        <div id="columnsBtn" class="pill">Columns</div>
+        <div id="exitBtn" class="pill">Exit</div>
       </div>
     </div>
-
-    <div class="progress-wrap"><div class="progress-fill" id="progressFill"></div></div>
-
+    <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
     <div class="reader-body">
-      <div id="readerFrame" tabindex="0" aria-live="polite"></div>
+      <div id="readerFrame" class="dark" tabindex="0" aria-live="polite"></div>
     </div>
-
-    <div class="reader-floating" aria-hidden="false">
-      <button class="round-btn" id="prevBtn">◀</button>
-      <button class="round-btn" id="fontDec">A-</button>
-      <button class="round-btn" id="fontInc">A+</button>
-      <button class="round-btn" id="nextBtn">▶</button>
+    <div class="reader-float">
+      <div id="prevBtn" class="round">◀</div>
+      <div id="fontDec" class="round">A-</div>
+      <div id="fontInc" class="round">A+</div>
+      <div id="nextBtn" class="round">▶</div>
     </div>
   </div>
 </div>
 
-<!-- Preferences panel -->
-<div id="prefsPanel" style="position:fixed;right:22px;top:84px;width:320px;background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(255,255,255,0.004));padding:12px;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.6);display:none;z-index:1300">
-  <div style="font-weight:700;margin-bottom:8px">Reader Preferences</div>
-  <label style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">Font size <input id="prefFont" type="range" min="14" max="24" value="18"></label>
-  <label style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">Measure <input id="prefMeasure" type="range" min="48" max="80" value="60"></label>
-  <label style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">Line height <input id="prefLine" type="range" min="140" max="200" value="178"></label>
-  <div style="margin-top:8px;color:var(--muted);font-size:13px">Settings saved locally.</div>
+<!-- Minimal prefs -->
+<div id="prefs" style="position:fixed;right:18px;top:84px;padding:12px;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(255,255,255,0.004));box-shadow:var(--card-shadow);display:none;z-index:1500">
+  <div style="font-weight:700;margin-bottom:8px">Reader Settings</div>
+  <label style="display:flex;justify-content:space-between;gap:8px">Font <input id="fontRange" type="range" min="14" max="24" value="18"></label>
+  <label style="display:flex;justify-content:space-between;gap:8px">Measure <input id="measureRange" type="range" min="48" max="80" value="60"></label>
+  <label style="display:flex;justify-content:space-between;gap:8px">Line <input id="lineRange" type="range" min="140" max="200" value="178"></label>
 </div>
 
 <script>
-/* Single-file hybrid reader
-   - Distinct overlay reading space (not inline)
-   - Stable lazy-hydration into placeholders
-   - Top progress per-chapter and chapter-count meta
-   - Aesthetic controls and persistent prefs
-   - Uses JSZip + IndexedDB (client-side)
+/* Lean, corrected reader JS
+   - Reader overlay is separate; homepage hidden when open
+   - ReaderFrame is isolated scroller
+   - Placeholders hydrated in-place to avoid jumps
+   - Progress: chapter-aware + percent
+   - Simple controls and prefs
 */
 
-const DB='comick_v3', STORE='books';
+const DB='comick_clean_v1', STORE='books';
 let db=null;
-async function openDB(){ return new Promise((res,rej)=>{ const rq=indexedDB.open(DB,1); rq.onupgradeneeded=e=>{ db=e.target.result; if(!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE,{keyPath:'id'}); }; rq.onsuccess=e=>{ db=e.target.result; res(db); }; rq.onerror=rej; });}
-async function putObj(o){ if(!db) await openDB(); return new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readwrite'); const r=tx.objectStore(STORE).put(o); r.onsuccess=res; r.onerror=rej; });}
-async function getAll(){ if(!db) await openDB(); return new Promise(res=>{ const tx=db.transaction(STORE,'readonly'); tx.objectStore(STORE).getAll().onsuccess = e => res(e.target.result); });}
-async function getById(id){ if(!db) await openDB(); return new Promise(res=>{ const tx=db.transaction(STORE,'readonly'); tx.objectStore(STORE).get(id).onsuccess = e => res(e.target.result); });}
-async function deleteById(id){ if(!db) await openDB(); return new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readwrite'); const r=tx.objectStore(STORE).delete(id); r.onsuccess=res; r.onerror=rej; });}
+async function openDB(){ return new Promise((r,j)=>{ const rq=indexedDB.open(DB,1); rq.onupgradeneeded=e=>{ db=e.target.result; if(!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE,{keyPath:'id'}); }; rq.onsuccess=e=>{ db=e.target.result; r(db); }; rq.onerror=j; });}
+async function putObj(o){ if(!db) await openDB(); return new Promise((r,j)=>{ const tx=db.transaction(STORE,'readwrite'); const req=tx.objectStore(STORE).put(o); req.onsuccess=r; req.onerror=j; });}
+async function getAll(){ if(!db) await openDB(); return new Promise(r=>{ const tx=db.transaction(STORE,'readonly'); tx.objectStore(STORE).getAll().onsuccess = e => r(e.target.result); });}
+async function getById(id){ if(!db) await openDB(); return new Promise(r=>{ const tx=db.transaction(STORE,'readonly'); tx.objectStore(STORE).get(id).onsuccess = e => r(e.target.result); });}
+async function deleteById(id){ if(!db) await openDB(); return new Promise((r,j)=>{ const tx=db.transaction(STORE,'readwrite'); const req=tx.objectStore(STORE).delete(id); req.onsuccess=r; req.onerror=j; });}
 
-/* DOM refs */
-const epubInput = document.getElementById('epubInput');
-const tilesEl = document.getElementById('tiles');
-const libraryGrid = document.getElementById('libraryGrid');
-const readerOverlay = document.getElementById('readerOverlay');
-const readerCard = document.getElementById('readerCard');
-const readerFrame = document.getElementById('readerFrame');
-const progressFill = document.getElementById('progressFill');
-const progressMeta = document.getElementById('progressMeta');
-const readerTitle = document.getElementById('readerTitle');
-
-const prefsBtn = document.getElementById('prefsBtn'), prefsPanel = document.getElementById('prefsPanel');
-const prefFont = document.getElementById('prefFont'), prefMeasure = document.getElementById('prefMeasure'), prefLine = document.getElementById('prefLine');
-
-const exitReader = document.getElementById('exitReader');
-const prevBtn = document.getElementById('prevBtn'), nextBtn = document.getElementById('nextBtn');
+/* DOM */
+const epubInput = document.getElementById('epubInput'), tiles = document.getElementById('tiles'), libraryGrid = document.getElementById('libraryGrid');
+const readerOverlay = document.getElementById('readerOverlay'), readerPanel = document.getElementById('readerPanel');
+const readerFrame = document.getElementById('readerFrame'), readerTitle = document.getElementById('readerTitle');
+const progressFill = document.getElementById('progressFill'), progressMeta = document.getElementById('progressMeta');
+const exitBtn = document.getElementById('exitBtn'), prevBtn = document.getElementById('prevBtn'), nextBtn = document.getElementById('nextBtn');
 const fontInc = document.getElementById('fontInc'), fontDec = document.getElementById('fontDec');
-const themeToggle = document.getElementById('themeToggle'), columnsBtn = document.getElementById('columnsBtn');
-
-const focusBtn = document.getElementById('openReaderBtn'), searchInput = document.getElementById('searchInput');
+const columnsBtn = document.getElementById('columnsBtn');
+const prefsBtn = document.getElementById('prefsBtn'), prefsBox = document.getElementById('prefs');
+const fontRange = document.getElementById('fontRange'), measureRange = document.getElementById('measureRange'), lineRange = document.getElementById('lineRange');
+const search = document.getElementById('search');
 
 let library = [], current=null, zip=null, spine=[], manifest={}, observer=null, currentIdx=0;
 
-/* utils */
-function uid(){ return 'b_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
-function escapeHtml(s){ return (''+s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[m])); }
-function readFileAsArrayBuffer(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsArrayBuffer(file); });}
-function readFileAsDataURL(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); });}
+/* small helpers */
+function uid(){ return 'b_'+Date.now()+'_'+Math.random().toString(36).slice(2,8); }
+function escapeHtml(s){ return (''+s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[m])); }
+function readAsArrayBuffer(file){ return new Promise((r,j)=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.onerror=j; fr.readAsArrayBuffer(file); });}
+function placeholderSVG(title){ return 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='800' height='1200'><rect width='100%' height='100%' fill='#08121a'/><text x='50%' y='56%' font-size='36' fill='#efe7c9' text-anchor='middle' font-family='Merriweather'>${escapeHtml(title||'Untitled')}</text></svg>`); }
 
-/* ZIP helpers */
-function tryGetFile(z,path){
-  if(!path) return null;
-  if(z.file(path)) return z.file(path);
-  try{ const d=decodeURIComponent(path); if(z.file(d)) return z.file(d);}catch(e){}
-  const p=path.replace(/^\.\//,'').replace(/^\/+/,'');
-  if(z.file(p)) return z.file(p);
-  const name=p.split('/').pop();
-  const keys=Object.keys(z.files);
-  const found=keys.find(k=>k.endsWith('/'+name) || k.endsWith(name));
-  return found? z.file(found) : null;
-}
-function xmlParse(txt){ try{ return (new DOMParser()).parseFromString(txt,'application/xml'); }catch(e){ return null; } }
-async function findOpf(z){
-  const c = tryGetFile(z,'META-INF/container.xml') || tryGetFile(z,'container.xml'); if(!c) return null;
-  const txt = await c.async('string'); const doc = xmlParse(txt); if(!doc) return null;
-  const rf = doc.getElementsByTagName('rootfile')[0]; if(rf && rf.getAttribute) return rf.getAttribute('full-path');
-  const all = doc.getElementsByTagName('*'); for(const n of all) if(n.localName === 'rootfile' && n.getAttribute){ const p=n.getAttribute('full-path'); if(p) return p; }
-  return null;
-}
-async function readSpine(z){
-  const opfPath = await findOpf(z); if(!opfPath) throw new Error('OPF not found');
-  const opf = tryGetFile(z, opfPath); if(!opf) throw new Error('OPF missing: '+opfPath);
-  const opfStr = await opf.async('string'); const opfDoc = xmlParse(opfStr); if(!opfDoc) throw new Error('OPF parse failed');
-  const base = opfPath.split('/').slice(0,-1).join('/');
-  const items = {}; const manEls = opfDoc.getElementsByTagName('manifest'); const itemNodes = manEls.length ? manEls[0].getElementsByTagName('item') : opfDoc.getElementsByTagName('item');
-  for(const it of itemNodes){ const id = it.getAttribute('id')||it.getAttribute('xml:id')||''; items[id] = { href: it.getAttribute('href'), type: it.getAttribute('media-type'), props: it.getAttribute('properties') }; }
-  const spineEls = opfDoc.getElementsByTagName('spine'); const refs = spineEls.length ? spineEls[0].getElementsByTagName('itemref') : opfDoc.getElementsByTagName('itemref');
-  const spineList = [];
-  for(const r of refs){ const idref = r.getAttribute('idref') || r.getAttribute('id') || r.getAttribute('href') || ''; spineList.push(idref); }
-  if(spineList.length === 0){ for(const k in items){ const m = items[k]; if(m.type && m.type.includes('html')) spineList.push(k); } }
-  return { base, items, spineList, opfDoc };
-}
-function buildChapters(base, items, spineList){
-  const arr=[];
-  for(const idref of spineList){
-    let item = items[idref];
-    if(!item){ for(const k in items) if(k===idref || items[k].href===idref) item = items[k]; }
-    if(!item) continue;
-    arr.push({ href: (base ? base + '/' : '') + item.href, title: item.href });
-  }
-  if(arr.length===0){ for(const k in items){ const it = items[k]; if(it.type && it.type.includes('html')) arr.push({ href: (base? base + '/':'') + it.href, title: it.href }); } }
-  return arr;
-}
+/* zip helpers (robust) */
+function tryGetFile(z,path){ if(!path) return null; if(z.file(path)) return z.file(path); try{ const d=decodeURIComponent(path); if(z.file(d)) return z.file(d); }catch(e){} const p=path.replace(/^\.\//,'').replace(/^\/+/,''); if(z.file(p)) return z.file(p); const name=p.split('/').pop(); const keys=Object.keys(z.files); const found=keys.find(k=>k.endsWith('/'+name) || k.endsWith(name)); return found? z.file(found): null; }
+function xmlParse(txt){ try{return (new DOMParser()).parseFromString(txt,'application/xml'); }catch(e){return null;} }
+async function findOpf(z){ const c=tryGetFile(z,'META-INF/container.xml')||tryGetFile(z,'container.xml'); if(!c) return null; const txt = await c.async('string'); const doc = xmlParse(txt); if(!doc) return null; const rf = doc.getElementsByTagName('rootfile')[0]; if(rf && rf.getAttribute) return rf.getAttribute('full-path'); const all = doc.getElementsByTagName('*'); for(const n of all) if(n.localName==='rootfile' && n.getAttribute){ const p=n.getAttribute('full-path'); if(p) return p;} return null; }
+async function readSpine(z){ const opfPath=await findOpf(z); if(!opfPath) throw new Error('OPF not found'); const opfFile = tryGetFile(z,opfPath); if(!opfFile) throw new Error('OPF missing'); const opfStr = await opfFile.async('string'); const opfDoc = xmlParse(opfStr); if(!opfDoc) throw new Error('OPF parse failed'); const base=opfPath.split('/').slice(0,-1).join('/'); const items={}; const manEls = opfDoc.getElementsByTagName('manifest'); const itemNodes = manEls.length ? manEls[0].getElementsByTagName('item') : opfDoc.getElementsByTagName('item'); for(const it of itemNodes){ const id = it.getAttribute('id')||it.getAttribute('xml:id')||''; items[id] = { href: it.getAttribute('href'), type: it.getAttribute('media-type') }; } const spineEls = opfDoc.getElementsByTagName('spine'); const refs = spineEls.length ? spineEls[0].getElementsByTagName('itemref') : opfDoc.getElementsByTagName('itemref'); const spineList=[]; for(const r of refs){ const idref = r.getAttribute('idref')||r.getAttribute('id')||r.getAttribute('href')||''; spineList.push(idref); } if(spineList.length===0){ for(const k in items){ const m=items[k]; if(m.type && m.type.includes('html')) spineList.push(k); } } return { base, items, spineList }; }
+function buildChapters(base,items,spineList){ const out=[]; for(const idref of spineList){ let item = items[idref]; if(!item){ for(const k in items) if(k===idref||items[k].href===idref) item=items[k]; } if(!item) continue; out.push({ href:(base? base + '/':'') + item.href, title: item.href }); } if(out.length===0){ for(const k in items){ const it = items[k]; if(it.type && it.type.includes('html')) out.push({ href:(base? base + '/':'') + it.href, title: it.href }); } } return out; }
 async function loadChapterHtml(z, base, href){
-  const file = tryGetFile(z, href) || tryGetFile(z, decodeURIComponent(href)); if(!file) throw new Error('Missing chapter: '+href);
-  const raw = await file.async('string');
-  let doc;
+  const file = tryGetFile(z, href) || tryGetFile(z, decodeURIComponent(href)); if(!file) throw new Error('Chapter missing: '+href);
+  const raw = await file.async('string'); let doc;
   try{ doc = (new DOMParser()).parseFromString(raw,'application/xml'); }catch(e){ doc = (new DOMParser()).parseFromString(raw,'text/html'); }
   if(!doc) throw new Error('Parse failed: '+href);
   // inline CSS
@@ -257,9 +196,9 @@ async function loadChapterHtml(z, base, href){
     const rel=(link.getAttribute('rel')||'').toLowerCase();
     if(rel==='stylesheet'){
       const cssHref = link.getAttribute('href')||'';
-      const candidates = [(base? base + '/':'')+cssHref, cssHref, decodeURIComponent(cssHref)];
+      const cands = [(base? base + '/':'')+cssHref, cssHref, decodeURIComponent(cssHref)];
       let cssFile=null;
-      for(const c of candidates){ cssFile = tryGetFile(z,c); if(cssFile) break; }
+      for(const c of cands){ cssFile = tryGetFile(z,c); if(cssFile) break; }
       if(cssFile){ try{ const css = await cssFile.async('string'); const style = doc.createElement('style'); style.textContent = css; link.parentNode.replaceChild(style, link); }catch(e){ link.remove(); } } else link.remove();
     }
   }
@@ -267,10 +206,10 @@ async function loadChapterHtml(z, base, href){
   const imgs = Array.from(doc.getElementsByTagName('img'));
   for(const img of imgs){
     const src = img.getAttribute('src')||''; if(!src) continue;
-    const candidates=[(base? base + '/':'')+src, src, decodeURIComponent(src)];
-    let imgFile=null;
-    for(const c of candidates){ imgFile = tryGetFile(z,c); if(imgFile) break; }
-    if(imgFile){ try{ const blob = await imgFile.async('blob'); const url = URL.createObjectURL(blob); img.setAttribute('src', url); img.setAttribute('loading','lazy'); }catch(e){ console.warn('img inline fail', e); } }
+    const cands = [(base? base + '/':'')+src, src, decodeURIComponent(src)];
+    let f=null;
+    for(const c of cands){ f = tryGetFile(z,c); if(f) break; }
+    if(f){ try{ const blob = await f.async('blob'); const url = URL.createObjectURL(blob); img.setAttribute('src', url); img.setAttribute('loading','lazy'); }catch(e){ console.warn('img inline fail', e); } }
   }
   const ser = new XMLSerializer();
   const bodies = doc.getElementsByTagName('body');
@@ -283,68 +222,63 @@ async function loadChapterHtml(z, base, href){
 }
 
 /* render library */
-async function renderLibrary(){
+async function renderLibrary(q){
   library = await getAll().catch(()=>[]);
-  tilesEl.innerHTML = ''; libraryGrid.innerHTML = '';
-  if(library.length === 0){
-    libraryGrid.innerHTML = '<div style="color:var(--muted);padding:28px">No books — import an EPUB to start.</div>'; return;
-  }
-  for(const b of library){
+  tiles.innerHTML=''; libraryGrid.innerHTML='';
+  const filtered = q ? library.filter(b=> (b.title||'').toLowerCase().includes(q.toLowerCase())) : library;
+  if(filtered.length===0){ libraryGrid.innerHTML = '<div style="color:var(--muted);padding:24px">Library empty — import an EPUB</div>'; return; }
+  for(const b of filtered){
     // tile
-    const t = document.createElement('div'); t.className='tile';
-    const img = document.createElement('img'); img.src = b.cover || placeholderSVG(b.title); img.alt = b.title; t.appendChild(img);
-    t.addEventListener('click', ()=> openBook(b.id));
-    t.addEventListener('contextmenu', e=>{ e.preventDefault(); if(confirm('Delete \"'+b.title+'\"?')) deleteById(b.id).then(()=> renderLibrary()); });
-    tilesEl.appendChild(t);
-    // grid card
+    const tile = document.createElement('div'); tile.className='tile'; tile.style.marginBottom='12px';
+    const img = document.createElement('img'); img.src = b.cover || placeholderSVG(b.title); tile.appendChild(img);
+    tile.addEventListener('click', ()=> openBook(b.id));
+    tile.addEventListener('contextmenu', e=>{ e.preventDefault(); if(confirm('Delete \"'+b.title+'\"?')) deleteById(b.id).then(()=> renderLibrary(search.value)); });
+    tiles.appendChild(tile);
+    // grid
     const card = document.createElement('div'); card.className='card';
-    const cover = document.createElement('div'); cover.className='cardCover';
-    const cimg = document.createElement('img'); cimg.src = b.cover || placeholderSVG(b.title); cover.appendChild(cimg);
-    card.appendChild(cover);
+    const cov = document.createElement('div'); cov.className='cardCover';
+    const cimg = document.createElement('img'); cimg.src = b.cover || placeholderSVG(b.title); cov.appendChild(cimg); card.appendChild(cov);
     const title = document.createElement('div'); title.className='cardTitle'; title.textContent = b.title; card.appendChild(title);
     const meta = document.createElement('div'); meta.className='cardMeta'; meta.innerHTML = '<div>'+(b.lastIndex? 'Resume':'New')+'</div><div style="color:var(--muted)">'+((b.epub && b.epub.size)? Math.round((b.epub.size||0)/1024)+'KB':'—')+'</div>';
     card.appendChild(meta);
     card.addEventListener('click', ()=> openBook(b.id));
-    card.addEventListener('contextmenu', e=>{ e.preventDefault(); if(confirm('Delete \"'+b.title+'\"?')) deleteById(b.id).then(()=> renderLibrary()); });
+    card.addEventListener('contextmenu', e=>{ e.preventDefault(); if(confirm('Delete \"'+b.title+'\"?')) deleteById(b.id).then(()=> renderLibrary(search.value)); });
     libraryGrid.appendChild(card);
   }
 }
-function placeholderSVG(title){
-  return 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='800' height='1200'><rect width='100%' height='100%' fill='#08121a'/><text x='50%' y='56%' font-size='36' fill='#efe7c9' text-anchor='middle' font-family='Merriweather'>${escapeHtml(title||'Untitled')}</text></svg>`);
-}
 
-/* import EPUB */
-epubInput.addEventListener('change', async (e)=>{
+/* import */
+epubInput.addEventListener('change', async ()=>{
   const f = epubInput.files[0]; if(!f) return;
   try{
-    const ab = await readFileAsArrayBuffer(f);
+    const ab = await readAsArrayBuffer(f);
     const id = uid(), title = (f.name||id).replace(/\.epub$/i,'');
     await putObj({ id, title, epub: new Blob([ab], {type:'application/epub+zip'}), cover: null, lastIndex: 0 });
-    epubInput.value=''; await renderLibrary();
-  }catch(err){ console.error(err); alert('Import failed'); }
+    epubInput.value = ''; await renderLibrary('');
+  }catch(e){ console.error(e); alert('Import failed'); }
 });
 
-/* open book (shows overlay) */
+/* open book (overlay) */
 async function openBook(id){
   try{
     current = await getById(id); if(!current) throw new Error('Book missing');
     readerTitle.textContent = current.title || 'Book';
     zip = await JSZip.loadAsync(await current.epub.arrayBuffer());
-    const spineData = await readSpine(zip);
-    manifest = spineData.items; spine = buildChapters(spineData.base, manifest, spineData.spineList);
-    if(spine.length === 0){ alert('No readable content'); return; }
-    // build placeholders
+    const sp = await readSpine(zip);
+    manifest = sp.items; spine = buildChapters(sp.base, manifest, sp.spineList);
+    if(spine.length === 0){ alert('No readable chapters'); return; }
+    // placeholders
     readerFrame.innerHTML = '';
     for(let i=0;i<spine.length;i++){
       const ph = document.createElement('div'); ph.className='chapter-placeholder'; ph.dataset.idx = i;
-      ph.style.minHeight = Math.round(Math.max(160, window.innerHeight * 0.22)) + 'px';
+      ph.style.minHeight = Math.round(Math.max(140, window.innerHeight * 0.2)) + 'px';
       ph.style.padding = '18px 0'; ph.style.color = 'var(--muted)'; ph.textContent = spine[i].title || ('Chapter '+(i+1));
       readerFrame.appendChild(ph);
     }
-    // show overlay
+    // show overlay and lock scroll
     readerOverlay.style.display = 'flex'; document.body.style.overflow = 'hidden';
-    setTimeout(()=> readerCard.classList.add('show'), 40);
-    // observer: conservative prefetch
+    setTimeout(()=> readerPanel.classList.add('show'), 20);
+    // intersection observer to hydrate conservatively
     if(observer) observer.disconnect();
     observer = new IntersectionObserver(async (entries)=>{
       for(const e of entries){
@@ -354,19 +288,17 @@ async function openBook(id){
         }
       }
     }, { root: readerFrame, rootMargin: '280px', threshold: 0.12 });
-    Array.from(readerFrame.querySelectorAll('.chapter-placeholder')).forEach(el => observer.observe(el));
-    // restore previous index
+    Array.from(readerFrame.querySelectorAll('.chapter-placeholder')).forEach(el=> observer.observe(el));
+    // restore position
     currentIdx = (current.lastIndex && current.lastIndex < spine.length) ? current.lastIndex : 0;
     await hydrate(currentIdx);
-    if(currentIdx + 1 < spine.length) hydrate(currentIdx+1);
-    setTimeout(()=> scrollToIndex(currentIdx, false), 220);
+    if(currentIdx+1 < spine.length) hydrate(currentIdx+1);
+    setTimeout(()=> scrollToIndex(currentIdx, false), 200);
     updateProgress();
-    // show progress bar and controls
-    document.getElementById('progressFill').style.width = '0%';
-  }catch(err){ console.error(err); alert('Open failed: '+(err.message||err)); }
+  }catch(e){ console.error(e); alert('Failed opening book: '+e.message); }
 }
 
-/* hydrate: inject into placeholder (no node replacement) */
+/* hydrate in place */
 async function hydrate(idx){
   if(!zip || !spine[idx]) return;
   const ph = readerFrame.querySelector('.chapter-placeholder[data-idx="'+idx+'"]');
@@ -380,28 +312,22 @@ async function hydrate(idx){
     ph.classList.remove('chapter-placeholder'); ph.classList.add('chapter'); ph.dataset.idx = idx;
     ph.innerHTML = `<div class="chapter-title">${escapeHtml(res.title)}</div><div class="chapter-body">${res.html}</div>`;
     const body = ph.querySelector('.chapter-body');
-    const paragraphs = body.querySelectorAll('p');
-    if(paragraphs.length === 0){
-      const txt = (body.textContent||'').trim();
-      body.innerHTML = ''; const p = document.createElement('p'); p.textContent = txt || '(no extractable text)'; body.appendChild(p);
-    }
+    const ps = body.querySelectorAll('p');
+    if(ps.length === 0){ const t = (body.textContent||'').trim(); body.innerHTML=''; const p = document.createElement('p'); p.textContent = t || '(no extractable text)'; body.appendChild(p); }
     // images safe
-    const imgs = ph.querySelectorAll('img');
-    imgs.forEach(img=>{ if(!img.loading) img.loading = 'lazy'; img.style.maxWidth='100%'; img.style.height='auto'; img.style.display='block'; img.style.margin='12px auto'; });
-    // reveal animations
+    const imgs = ph.querySelectorAll('img'); imgs.forEach(img=>{ if(!img.loading) img.loading='lazy'; img.style.maxWidth='100%'; img.style.height='auto'; img.style.display='block'; img.style.margin='12px auto'; });
     setTimeout(()=> ph.classList.add('visible'), 60);
-    const ps = ph.querySelectorAll('.chapter-body p');
-    ps.forEach((p,i)=> setTimeout(()=> p.classList.add('visible'), 80 + i*14));
+    const paragraphs = ph.querySelectorAll('.chapter-body p'); paragraphs.forEach((p,i)=> setTimeout(()=> p.classList.add('visible'), 80 + i*14));
     setTimeout(()=> ph.style.minHeight = '', 900);
     try{ observer.unobserve(ph); }catch(e){}
-  }catch(e){
-    console.error('Hydrate error', e);
+  }catch(err){
+    console.error('hydrate fail', err);
     ph.textContent = 'Failed to load: ' + orig;
     ph.style.minHeight = '';
   }
 }
 
-/* scrolling & progress: chapter-centric */
+/* scroll & progress */
 function scrollToIndex(idx, smooth=true){
   const el = readerFrame.querySelector('.chapter[data-idx="'+idx+'"], .chapter-placeholder[data-idx="'+idx+'"]');
   if(!el) return;
@@ -414,107 +340,71 @@ readerFrame.addEventListener('scroll', throttle(()=> updateProgress(), 120));
 function updateProgress(){
   const chapters = Array.from(readerFrame.querySelectorAll('.chapter, .chapter-placeholder'));
   const rr = readerFrame.getBoundingClientRect();
-  let best = { idx: 0, vis: 0 };
+  let best = { idx:0, vis:0 };
   for(const c of chapters){
     const r = c.getBoundingClientRect();
     const vis = Math.max(0, Math.min(r.bottom, rr.bottom) - Math.max(r.top, rr.top));
-    if(vis > best.vis){ best = { idx: Number(c.dataset.idx), vis }; }
+    if(vis > best.vis) best = { idx: Number(c.dataset.idx), vis };
   }
   if(best.idx !== currentIdx){ currentIdx = best.idx; persistProgress(); }
-  // within-visible element progress (percentage of its scroll)
+  // compute percent (chapter index + intra-chapter percent)
   const el = readerFrame.querySelector('.chapter[data-idx="'+currentIdx+'"], .chapter-placeholder[data-idx="'+currentIdx+'"]');
-  let chapterPct = 0;
+  let intraPct = 0;
   if(el){
     const rr2 = readerFrame.getBoundingClientRect(), er = el.getBoundingClientRect();
     const visibleTop = Math.max(er.top, rr2.top);
     const visibleBottom = Math.min(er.bottom, rr2.bottom);
     const visibleHeight = Math.max(0, visibleBottom - visibleTop);
-    const elHeight = er.bottom - er.top;
-    chapterPct = elHeight > 0 ? Math.round((visibleHeight / elHeight)*100) : 0;
+    const elH = er.bottom - er.top;
+    intraPct = elH > 0 ? (visibleHeight / elH) : 0;
   }
-  // final percent: mix of chapter index and chapter scroll for smoother feel
-  const part = (currentIdx) / Math.max(1, spine.length);
-  const finalPct = Math.round(((currentIdx + (chapterPct/100)) / Math.max(1, spine.length)) * 100);
+  const finalPct = Math.round(((currentIdx + intraPct) / Math.max(1, spine.length)) * 100);
   progressFill.style.width = finalPct + '%';
-  progressMeta.textContent = `Chapter ${currentIdx+1} / ${spine.length} • ${finalPct}%`;
+  progressMeta.textContent = `${currentIdx+1} / ${spine.length} • ${finalPct}%`;
 }
 
-/* persist reading index to DB */
+/* persist progress */
 async function persistProgress(){ if(!current) return; current.lastIndex = currentIdx; await putObj(current); }
 
-/* keyboard and swipe nav */
-document.addEventListener('keydown', (e)=>{
-  if(readerOverlay.style.display === 'flex'){
-    if(e.key === 'ArrowRight' || e.key === 'PageDown'){ if(currentIdx < spine.length -1) scrollToIndex(currentIdx+1); }
-    else if(e.key === 'ArrowLeft' || e.key === 'PageUp'){ if(currentIdx > 0) scrollToIndex(currentIdx-1); }
-    else if(e.key === 'Escape'){ closeReader(); }
-  }
-});
-let sx=0, ex=0;
-readerFrame.addEventListener('touchstart', e=> sx = e.changedTouches[0].clientX);
-readerFrame.addEventListener('touchend', e=>{ ex = e.changedTouches[0].clientX; const d = ex - sx; if(Math.abs(d) > 60){ if(d < 0 && currentIdx < spine.length-1) scrollToIndex(currentIdx+1); if(d > 0 && currentIdx > 0) scrollToIndex(currentIdx-1); } });
-
-/* UI controls */
-exitReader.addEventListener('click', closeReader);
+/* controls */
+exitBtn.addEventListener('click', closeReader);
 function closeReader(){
-  readerCard.classList.remove('show');
-  setTimeout(()=>{ readerOverlay.style.display = 'none'; readerFrame.innerHTML = ''; document.body.style.overflow=''; }, 220);
-  current = null; zip = null; spine=[]; manifest={}; observer && observer.disconnect(); observer=null;
+  readerPanel.classList.remove('show');
+  setTimeout(()=> { readerOverlay.style.display='none'; readerFrame.innerHTML=''; document.body.style.overflow=''; }, 220);
+  current=null; zip=null; spine=[]; manifest={}; observer && observer.disconnect(); observer=null;
 }
-prevBtn.addEventListener('click', ()=>{ if(currentIdx>0) scrollToIndex(currentIdx-1); });
-nextBtn.addEventListener('click', ()=>{ if(currentIdx < spine.length-1) scrollToIndex(currentIdx+1); });
-fontInc.addEventListener('click', ()=>{ prefFont.value = Math.min(24, Number(prefFont.value)+1); applyPrefs(); savePrefs(); });
-fontDec.addEventListener('click', ()=>{ prefFont.value = Math.max(14, Number(prefFont.value)-1); applyPrefs(); savePrefs(); });
+prevBtn.addEventListener('click', ()=> { if(currentIdx>0) scrollToIndex(currentIdx-1); });
+nextBtn.addEventListener('click', ()=> { if(currentIdx < spine.length-1) scrollToIndex(currentIdx+1); });
+fontInc.addEventListener('click', ()=> { fontRange.value = Math.min(24, Number(fontRange.value)+1); applyPrefs(); savePrefs(); });
+fontDec.addEventListener('click', ()=> { fontRange.value = Math.max(14, Number(fontRange.value)-1); applyPrefs(); savePrefs(); });
+columnsBtn.addEventListener('click', ()=> { readerFrame.style.columnCount = readerFrame.style.columnCount === '2' ? '1' : '2'; readerFrame.style.columnGap = '36px'; });
 
-columnsBtn.addEventListener('click', ()=>{ readerFrame.style.columnCount = readerFrame.style.columnCount === '2' ? '1' : '2'; readerFrame.style.columnGap = '36px'; });
-
-themeToggle.addEventListener('click', ()=>{ readerCard.classList.toggle('light'); readerCard.classList.toggle('dark'); savePrefs(); });
-
-/* prefs panel */
-prefsBtn.addEventListener('click', ()=> prefsPanel.style.display = prefsPanel.style.display === 'block' ? 'none' : 'block');
-prefFont.addEventListener('input', ()=> { applyPrefs(); savePrefs(); });
-prefMeasure.addEventListener('input', ()=> { applyPrefs(); savePrefs(); });
-prefLine.addEventListener('input', ()=> { applyPrefs(); savePrefs(); });
+/* prefs */
+prefsBtn.addEventListener('click', ()=> prefsBox.style.display = prefsBox.style.display === 'block' ? 'none' : 'block');
+fontRange.addEventListener('input', ()=> { applyPrefs(); savePrefs(); });
+measureRange.addEventListener('input', ()=> { applyPrefs(); savePrefs(); });
+lineRange.addEventListener('input', ()=> { applyPrefs(); savePrefs(); });
 
 function applyPrefs(){
-  readerFrame.style.fontSize = prefFont.value + 'px';
-  document.documentElement.style.setProperty('--measure', prefMeasure.value + 'ch');
-  readerFrame.style.lineHeight = (prefLine.value/100);
-  // adjust internal card width to preserve measure
-  const w = Math.min(1200, Number(prefMeasure.value) * 1.33 + Number(getComputedStyle(document.documentElement).getPropertyValue('--reader-padding').replace('px',''))*2);
-  document.documentElement.style.setProperty('--reader-width', Math.min(1100, Math.round(w)) + 'px');
+  readerFrame.style.fontSize = fontRange.value + 'px';
+  document.documentElement.style.setProperty('--measure', measureRange.value + 'ch');
+  readerFrame.style.lineHeight = (lineRange.value / 100);
 }
+function savePrefs(){ localStorage.setItem('comick_prefs', JSON.stringify({ font: fontRange.value, measure: measureRange.value, line: lineRange.value })); }
+function loadPrefs(){ const p = JSON.parse(localStorage.getItem('comick_prefs')||'{}'); fontRange.value = p.font || 18; measureRange.value = p.measure || 60; lineRange.value = p.line || 178; applyPrefs(); }
 
-/* save/load prefs */
-function savePrefs(){
-  localStorage.setItem('comick_prefs', JSON.stringify({ font: prefFont.value, measure: prefMeasure.value, line: prefLine.value, theme: readerCard.classList.contains('light') ? 'light' : 'dark' }));
-}
-function loadPrefs(){
-  const p = JSON.parse(localStorage.getItem('comick_prefs')||'{}');
-  prefFont.value = p.font || 18;
-  prefMeasure.value = p.measure || 60;
-  prefLine.value = p.line || 178;
-  applyPrefs();
-  if(p.theme === 'light'){ readerCard.classList.add('light'); readerCard.classList.remove('dark'); } else { readerCard.classList.add('dark'); readerCard.classList.remove('light'); }
-}
+/* keyboard & swipe */
+document.addEventListener('keydown', (e)=>{ if(readerOverlay.style.display==='flex'){ if(e.key==='ArrowRight' || e.key === 'PageDown'){ if(currentIdx < spine.length-1) scrollToIndex(currentIdx+1); } else if(e.key==='ArrowLeft' || e.key === 'PageUp'){ if(currentIdx>0) scrollToIndex(currentIdx-1); } else if(e.key==='Escape'){ closeReader(); } }});
+let sx=0, ex=0; readerFrame.addEventListener('touchstart', e=> sx = e.changedTouches[0].clientX); readerFrame.addEventListener('touchend', e=>{ ex = e.changedTouches[0].clientX; const d = ex - sx; if(Math.abs(d) > 60){ if(d < 0 && currentIdx < spine.length-1) scrollToIndex(currentIdx+1); if(d > 0 && currentIdx > 0) scrollToIndex(currentIdx-1); } });
 
-/* helper throttle */
-function throttle(fn, wait=120){ let t=null; return (...a)=>{ if(t) return; t=setTimeout(()=>{ t=null; fn(...a); }, wait); }; }
-
-/* open reader from UI (for testing) */
-document.getElementById('openReaderBtn').addEventListener('click', ()=>{ if(library.length) openBook(library[0].id); });
+/* throttle util */
+function throttle(fn, wait=120){ let t=null; return (...a)=>{ if(t) return; t = setTimeout(()=>{ t=null; fn(...a); }, wait); }; }
 
 /* search */
-searchInput.addEventListener('keydown', e=> { if(e.key === 'Enter') renderLibrary(); });
+search.addEventListener('keydown', e=> { if(e.key==='Enter') renderLibrary(search.value.trim()); });
 
 /* init */
-(async function init(){
-  try{
-    await openDB();
-    loadPrefs();
-    await renderLibrary();
-  }catch(e){ console.error(e); }
-})();
+(async function init(){ try{ await openDB(); loadPrefs(); await renderLibrary(''); }catch(e){ console.error(e);} })();
 </script>
 </body>
 </html>
