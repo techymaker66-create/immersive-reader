@@ -1,106 +1,101 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Comick — Fix: Reading Mode + No Blur</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Comick — Polished Reader</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Playfair+Display:wght@400;700&family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-
 <style>
 :root{
-  --bg:#0d0d0f; --panel:#111113; --muted:#9b9b9b; --accent:#efe7c9;
-  --measure:64ch; --header-h:72px;
+  --bg:#061017; --panel:#0f1116; --muted:#9aa0a6; --accent:#efe7c9; --glass:rgba(255,255,255,0.03);
+  --card-shadow:0 20px 60px rgba(0,0,0,0.6); --btn-shadow:0 12px 36px rgba(0,0,0,0.45);
+  --radius:14px; --measure:72ch; --gap:14px; --transition:all .28s cubic-bezier(.2,.9,.2,1);
 }
-/* base */
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;background:var(--bg);color:var(--accent);-webkit-font-smoothing:antialiased}
-
-/* layout */
-#app{display:flex;min-height:100vh;transition:all .18s}
-#sidebar{width:340px;padding:22px;background:linear-gradient(180deg,#080808,var(--panel));border-right:1px solid rgba(255,255,255,0.03);display:flex;flex-direction:column;gap:12px;transition:transform .28s,opacity .28s}
-#main{flex:1;padding:22px;display:flex;flex-direction:column;align-items:center;position:relative;overflow:hidden}
-
-/* header / brand */
-h1{margin:0;font-family:'Playfair Display',serif;font-size:22px;letter-spacing:1px}
-
-/* controls */
+html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),#030305);color:var(--accent);-webkit-font-smoothing:antialiased;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial}
+#app{display:flex;min-height:100vh}
+/* APP SHELL */
+.header{
+  position:fixed;left:0;right:0;top:0;height:64px;display:flex;align-items:center;gap:16px;padding:10px 18px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));backdrop-filter:blur(6px);z-index:999;border-bottom:1px solid rgba(255,255,255,0.02)}
+.brand{display:flex;gap:12px;align-items:center}
+.logo{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#112233,#0a1b2b);display:flex;align-items:center;justify-content:center;font-weight:700;font-family:'Playfair Display',serif}
+.appTitle{font-family:'Playfair Display',serif;font-size:18px}
+.toolbar{margin-left:auto;display:flex;gap:10px;align-items:center}
+.iconBtn{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;background:var(--glass);border:1px solid rgba(255,255,255,0.03);cursor:pointer;box-shadow:var(--btn-shadow);font-weight:600}
+.searchInput{min-width:220px;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03);color:var(--accent);outline:none}
+/* SIDEBAR */
+#sidebar{width:300px;padding:88px 18px 22px 18px;background:linear-gradient(180deg,#05060a,var(--panel));border-right:1px solid rgba(255,255,255,0.02);display:flex;flex-direction:column;gap:12px}
 .controls{display:flex;flex-direction:column;gap:10px}
-.add-btn{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border:1px solid rgba(255,255,255,0.04);color:var(--accent);cursor:pointer;transition:transform .14s ease, box-shadow .14s;box-shadow:0 10px 28px rgba(0,0,0,0.55);font-weight:600}
-.add-btn:hover{transform:translateY(-4px);box-shadow:0 16px 42px rgba(0,0,0,0.65)}
-.add-btn:active{transform:translateY(-1px) scale(.995}
+.add-btn{display:inline-flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:var(--glass);border:1px solid rgba(255,255,255,0.03);color:var(--accent);cursor:pointer;transition:transform .14s ease}
 .add-btn input{display:none}
 #statusMsg{color:var(--muted);font-size:13px}
-
-/* tiles */
-.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;margin-top:12px}
-.tile{border-radius:12px;overflow:hidden;position:relative;background:#0f0f10;cursor:pointer;transition:transform .18s,box-shadow .18s;box-shadow:0 10px 28px rgba(0,0,0,0.55);min-height:220px}
-.tile:hover{transform:translateY(-8px) scale(1.02);box-shadow:0 28px 68px rgba(0,0,0,0.72)}
-.tile img{width:100%;height:100%;object-fit:cover;display:block;aspect-ratio:2/3}
-.tile .meta{position:absolute;left:0;right:0;bottom:0;padding:10px;background:linear-gradient(180deg,transparent,rgba(0,0,0,0.72));display:flex;justify-content:space-between;align-items:center}
-.tile .title{font-size:13px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-top:8px}
+.tile{border-radius:12px;overflow:hidden;position:relative;background:#0d1114;cursor:pointer;transition:transform .18s,box-shadow .18s;min-height:220px;display:flex;align-items:flex-end}
+.tile img{width:100%;height:100%;object-fit:cover;aspect-ratio:2/3;display:block}
+.tile .meta{position:absolute;left:0;right:0;bottom:0;padding:10px;background:linear-gradient(180deg,transparent,rgba(0,0,0,0.76));display:flex;justify-content:space-between;align-items:center}
+.tile .title{font-size:13px;font-weight:700}
 .tile .resume{font-size:12px;color:var(--muted)}
-
+.tile:hover{transform:translateY(-8px) scale(1.02);box-shadow:0 28px 68px rgba(0,0,0,0.72)}
+/* MAIN */
+#main{flex:1;padding:88px 28px 28px 28px;display:flex;flex-direction:column;align-items:center;position:relative}
+.libraryHeader{width:100%;max-width:1200px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.libraryHeader h2{margin:0;font-family:'Playfair Display',serif}
+.libraryGrid{width:100%;max-width:1200px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px}
+.card{background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(255,255,255,0.005));padding:14px;border-radius:12px;box-shadow:var(--card-shadow);display:flex;flex-direction:column;gap:10px}
+.cardCover{height:260px;border-radius:8px;overflow:hidden;background:#0b0c0e}
+.cardCover img{width:100%;height:100%;object-fit:cover}
+.cardTitle{font-weight:700}
+.cardMeta{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px}
 /* READER */
 #readerWrap{display:none;position:relative;width:100%;height:100vh;overflow:hidden}
-#readerHeader{height:var(--header-h);width:100%;display:flex;align-items:center;justify-content:space-between;padding:12px 28px;position:fixed;top:0;left:0;z-index:120;background:rgba(8,8,8,0.6);backdrop-filter:none}
-#readerHeader h2{margin:0;font-family:'Playfair Display',serif;font-size:18px}
-#viewerContainer{width:100%;max-width:1200px;margin-top:calc(var(--header-h) + 18px);margin-bottom:84px;position:relative}
-#viewer{background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));padding:28px;border-radius:14px;box-shadow:0 20px 70px rgba(0,0,0,0.6);max-height:76vh;overflow:auto;scroll-behavior:smooth}
-
-/* chapter card */
-.chapter{margin:24px 0;padding:28px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.004));box-shadow:0 10px 40px rgba(0,0,0,0.55);opacity:0;transform:translateY(12px)}
-.chapter.visible{opacity:1;transform:translateY(0);transition:all .42s cubic-bezier(.2,.9,.2,1)}
+#readerHeader{height:74px;display:flex;align-items:center;justify-content:space-between;padding:12px 20px;position:fixed;top:64px;left:320px;right:20px;z-index:140;background:linear-gradient(180deg,rgba(10,10,12,0.7),rgba(10,10,12,0.2));border-radius:12px;backdrop-filter:blur(6px);box-shadow:0 8px 30px rgba(0,0,0,0.6)}
+.readerControls{display:flex;gap:10px;align-items:center}
+.controlBtn{padding:8px 10px;border-radius:10px;background:var(--glass);border:1px solid rgba(255,255,255,0.03);cursor:pointer;font-weight:700}
+#viewerContainer{width:100%;max-width:1100px;margin-top:120px;margin-bottom:86px;position:relative}
+#viewer{background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));padding:36px;border-radius:12px;box-shadow:var(--card-shadow);max-height:74vh;overflow:auto;scroll-behavior:smooth;outline:none}
+.chapter{margin:28px 0;padding:28px;border-radius:12px;background:transparent;box-shadow:0 8px 30px rgba(0,0,0,0.55);opacity:0;transform:translateY(12px);transition:all .45s cubic-bezier(.2,.9,.2,1)}
+.chapter.visible{opacity:1;transform:translateY(0)}
 .chapter-title{font-family:'Playfair Display',serif;font-size:20px;margin:0 0 12px 0}
-.chapter-body{max-width:var(--measure);margin:0 auto;color:var(--accent);font-size:18px;line-height:1.82;text-align:justify;hyphens:auto;padding-right:6px}
-
-/* dropcap */
-.chapter-body p:first-of-type::first-letter{float:left;font-size:62px;line-height:56px;padding-right:12px;padding-top:6px;color:var(--accent);font-family:'Playfair Display',serif;font-weight:700}
-.chapter-body p{opacity:1;transition:opacity .45s;margin:0 0 1.05em}
-
-/* placeholders */
-.chapter-placeholder{padding:16px;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(255,255,255,0.004));margin:12px 0;text-align:center;color:var(--muted)}
-
-/* progress & nav */
-#progressBar{position:fixed;right:18px;top:18px;width:10px;height:56vh;background:rgba(255,255,255,0.03);border-radius:20px;overflow:hidden;z-index:110}
-#progressFill{width:100%;height:0;background:linear-gradient(180deg,var(--accent), #d4d4b8)}
-.nav{position:fixed;left:0;right:0;bottom:18px;display:flex;justify-content:space-between;padding:0 24px;pointer-events:none;z-index:110}
-.nav button{pointer-events:auto;padding:12px 18px;border-radius:22px;border:none;background:linear-gradient(145deg,#202021,#121213);color:var(--accent);font-weight:700;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,0.55)}
-
-/* reading-mode: hide sidebar and expand padding */
-body.reading #sidebar{transform:translateX(-120%);opacity:0;pointer-events:none}
-body.reading #main{padding:12px}
-body.reading #viewer{border-radius:10px;padding:36px}
-
-/* COVER REVEAL */
-.cover-overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:210;pointer-events:none;opacity:0;transform:scale(.98);transition:opacity .35s,transform .35s}
-.cover-overlay.show{opacity:1;pointer-events:auto;transform:scale(1)}
-.cover-card{width:64vw;max-width:720px;border-radius:16px;overflow:hidden;box-shadow:0 40px 120px rgba(0,0,0,0.85)}
-.cover-card img{width:100%;height:auto;display:block}
-
-/* fog & cursor */
-#fog{position:fixed;inset:0;background:radial-gradient(circle at 50% 40%, rgba(255,255,255,0.02), rgba(255,255,255,0.01) 10%, rgba(0,0,0,0.85) 40%);pointer-events:none;opacity:0;transition:opacity .45s;z-index:200}
-#cursorGlow{position:fixed;width:16px;height:16px;border-radius:50%;pointer-events:none;mix-blend-mode:screen;box-shadow:0 0 36px 8px rgba(245,245,220,0.22);transform:translate(-50%,-50%);z-index:300;transition:all .08s linear}
-
+.chapter-body{max-width:var(--measure);margin:0 auto;color:var(--accent);font-size:18px;line-height:1.78;text-align:justify;hyphens:auto}
+.chapter-body p{opacity:0;transform:translateY(6px);transition:opacity .28s ease,transform .28s ease}
+.chapter-body p.visible{opacity:1;transform:translateY(0)}
+.chapter-placeholder{padding:18px;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(255,255,255,0.004));margin:12px 0;text-align:center;color:var(--muted);min-height:200px;display:flex;align-items:center;justify-content:center}
+/* SETTINGS PANEL */
+#settingsPanel{position:fixed;right:20px;top:84px;width:300px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border-radius:12px;padding:14px;box-shadow:var(--card-shadow);z-index:600;display:none}
+.settingRow{display:flex;align-items:center;justify-content:space-between;padding:8px 0}
+.range{width:150px}
+/* progress */
+#progressBarTop{position:fixed;left:320px;right:20px;top:56px;height:6px;background:rgba(255,255,255,0.02);border-radius:6px;overflow:hidden;z-index:950}
+#progressFill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),#d4d4b8);transition:width .2s linear}
 /* responsive */
-@media (max-width:900px){ #sidebar{display:none} #viewer{padding:18px} .cover-card{width:86vw} }
+@media (max-width:1100px){#sidebar{display:none}#readerHeader{left:20px;right:20px}#progressBarTop{left:20px}} 
+@media (max-width:700px){.libraryGrid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))} .cardCover{height:180px}}
 </style>
 </head>
 <body>
+<div class="header">
+  <div class="brand">
+    <div class="logo">C</div>
+    <div>
+      <div class="appTitle">Comick</div>
+      <div style="font-size:12px;color:var(--muted)">Professional Reader</div>
+    </div>
+  </div>
+  <input id="globalSearch" class="searchInput" placeholder="Search library — title, chapter...">
+  <div class="toolbar">
+    <button id="openSettings" class="iconBtn">⚙ Settings</button>
+    <button id="importBtn" class="iconBtn">Import</button>
+  </div>
+</div>
+
 <div id="app">
   <aside id="sidebar">
-    <h1>Comick Library</h1>
     <div class="controls">
-      <label class="add-btn">Select EPUB
-        <input id="epubInput" type="file" accept=".epub">
-      </label>
-      <label class="add-btn">Upload Cover (optional)
-        <input id="coverInput" type="file" accept="image/*">
-      </label>
+      <label class="add-btn">Select EPUB<input id="epubInput" type="file" accept=".epub"></label>
+      <label class="add-btn">Upload Cover (opt.)<input id="coverInput" type="file" accept="image/*"></label>
       <div style="display:flex;gap:8px">
         <button id="addSeriesBtn" class="add-btn">Add</button>
-        <button id="toggleFullscreenBtn" class="add-btn">Fullscreen</button>
         <button id="downloadAllBtn" class="add-btn">Download All</button>
       </div>
     </div>
@@ -109,423 +104,163 @@ body.reading #viewer{border-radius:10px;padding:36px}
   </aside>
 
   <main id="main">
-    <div id="homepageView" style="width:100%;max-width:1200px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <h2 style="margin:0;font-family:'Playfair Display',serif">Your Library</h2>
-        <div style="color:var(--muted);font-size:13px">Click to open • Right-click to delete • Resumes automatically</div>
-      </div>
+    <div class="libraryHeader">
+      <h2>Your Library</h2>
+      <div style="color:var(--muted);font-size:13px">Click to open • Right-click to delete • Use settings for reading prefs</div>
     </div>
 
+    <div class="libraryGrid" id="libraryGrid"></div>
+
     <div id="readerWrap">
+      <div id="progressBarTop"><div id="progressFill"></div></div>
       <div id="readerHeader">
-        <h2 id="seriesTitle">Series</h2>
-        <div>
-          <button id="gotoHome" class="add-btn">Library</button>
-          <button id="downloadEpub" class="add-btn">Download EPUB</button>
+        <div id="seriesTitle">Series</div>
+        <div class="readerControls">
+          <button id="decreaseFont" class="controlBtn">A-</button>
+          <button id="increaseFont" class="controlBtn">A+</button>
+          <button id="toggleColumns" class="controlBtn">Columns</button>
+          <button id="gotoHome" class="controlBtn">Library</button>
+          <button id="downloadEpub" class="controlBtn">Download</button>
         </div>
       </div>
 
       <div id="viewerContainer"><div id="viewer" tabindex="0"></div></div>
-
-      <div id="progressBar"><div id="progressFill"></div></div>
-
-      <div class="nav">
-        <button id="prevBtn">⟵ Prev</button>
-        <button id="nextBtn">Next ⟶</button>
-      </div>
     </div>
   </main>
 </div>
 
-<div id="coverOverlay" class="cover-overlay"><div class="cover-card" id="coverCard"><img id="coverCardImg" src="" alt="cover"></div></div>
-<div id="fog"></div>
-<div id="cursorGlow"></div>
+<div id="settingsPanel">
+  <div style="font-weight:700;margin-bottom:8px">Reader Settings</div>
+  <div class="settingRow"><div>Font size</div><input id="fontSizeRange" type="range" min="14" max="26" value="18" class="range"></div>
+  <div class="settingRow"><div>Line height</div><input id="lineHeightRange" type="range" min="120" max="200" value="178" class="range"></div>
+  <div class="settingRow"><div>Theme</div><select id="themeSelect"><option value="dark">Dark</option><option value="light">Light</option></select></div>
+  <div style="margin-top:10px;color:var(--muted);font-size:13px">Settings are saved locally.</div>
+</div>
+
+<!-- cover modal -->
+<div id="coverOverlay" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:1200;pointer-events:none;opacity:0;transition:opacity .25s"><div style="width:70vw;max-width:760px;border-radius:12px;overflow:hidden;box-shadow:0 30px 120px rgba(0,0,0,0.8)"><img id="coverCardImg" src="" style="width:100%;display:block"></div></div>
 
 <script>
-/* Single-file Comick reader — fixes applied:
-   - reading mode distinct (sidebar auto-hide)
-   - header no longer blurs/overlaps content
-   - restore interactive hover feedback
-   - robust chapter insertion: if no <p> found, inject readable text
-   - faster paragraph reveal; always visible for reading
+/* Polished UI + reader with preferences. Kept robust epub loading from previous stable patch.
+   Key features added:
+   - top header with search & settings
+   - grid library with cards and improved cover handling
+   - settings panel (font size, line height, theme) persisted to localStorage
+   - two-column toggle
+   - smooth progress bar at top
 */
 
 const DB_NAME='comick_comick_v1', STORE='series';
 let db=null;
-async function openDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open(DB_NAME,1); r.onupgradeneeded=e=>{ db=e.target.result; if(!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE,{keyPath:'id'}); }; r.onsuccess=e=>{ db=e.target.result; res(db); }; r.onerror=e=>rej(e); });}
-async function getAll(){ if(!db) await openDB(); return new Promise(res=>{ const tx=db.transaction(STORE,'readonly'); const store=tx.objectStore(STORE); const q=store.getAll(); q.onsuccess=()=>res(q.result); });}
-async function getById(id){ if(!db) await openDB(); return new Promise(res=>{ const tx=db.transaction(STORE,'readonly'); tx.objectStore(STORE).get(id).onsuccess=e=>res(e.target.result); });}
-async function putObj(o){ if(!db) await openDB(); return new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readwrite'); const r=tx.objectStore(STORE).put(o); r.onsuccess=()=>res(); r.onerror=e=>rej(e); });}
-async function deleteById(id){ if(!db) await openDB(); return new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readwrite'); const r=tx.objectStore(STORE).delete(id); r.onsuccess=()=>res(); r.onerror=e=>rej(e); });}
+async function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open(DB_NAME,1);r.onupgradeneeded=e=>{db=e.target.result; if(!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE,{keyPath:'id'});};r.onsuccess=e=>{db=e.target.result;res(db);};r.onerror=rej;});}
+async function getAll(){ if(!db) await openDB(); return new Promise(res=>{ const tx=db.transaction(STORE,'readonly'); tx.objectStore(STORE).getAll().onsuccess = e => res(e.target.result); }); }
+async function getById(id){ if(!db) await openDB(); return new Promise(res=>{ const tx=db.transaction(STORE,'readonly'); tx.objectStore(STORE).get(id).onsuccess = e => res(e.target.result); }); }
+async function putObj(o){ if(!db) await openDB(); return new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readwrite'); const r=tx.objectStore(STORE).put(o); r.onsuccess=()=>res(); r.onerror=rej; }); }
+async function deleteById(id){ if(!db) await openDB(); return new Promise((res,rej)=>{ const tx=db.transaction(STORE,'readwrite'); const r=tx.objectStore(STORE).delete(id); r.onsuccess=()=>res(); r.onerror=rej; }); }
 
-/* DOM refs */
+/* DOM */
 const epubInput = document.getElementById('epubInput'), coverInput = document.getElementById('coverInput');
-const addBtn = document.getElementById('addSeriesBtn'), tilesEl = document.getElementById('tiles');
+const tilesEl = document.getElementById('tiles'), libraryGrid = document.getElementById('libraryGrid');
 const statusMsg = document.getElementById('statusMsg'), viewer = document.getElementById('viewer');
-const readerWrap = document.getElementById('readerWrap'), homepageView = document.getElementById('homepageView');
-const seriesTitle = document.getElementById('seriesTitle'), prevBtn = document.getElementById('prevBtn'), nextBtn = document.getElementById('nextBtn');
-const gotoHome = document.getElementById('gotoHome'), progressFill = document.getElementById('progressFill');
-const downloadEpubBtn = document.getElementById('downloadEpub'), toggleFullscreenBtn = document.getElementById('toggleFullscreenBtn');
-const downloadAllBtn = document.getElementById('downloadAllBtn');
-const fog = document.getElementById('fog'), cursorGlow = document.getElementById('cursorGlow');
+const readerWrap = document.getElementById('readerWrap'), seriesTitle = document.getElementById('seriesTitle');
+const globalSearch = document.getElementById('globalSearch');
+const settingsPanel = document.getElementById('settingsPanel'), openSettings = document.getElementById('openSettings');
+const fontSizeRange = document.getElementById('fontSizeRange'), lineHeightRange = document.getElementById('lineHeightRange'), themeSelect = document.getElementById('themeSelect');
+const toggleColumns = document.getElementById('toggleColumns');
+const gotoHome = document.getElementById('gotoHome'), downloadEpub = document.getElementById('downloadEpub');
+const progressFill = document.getElementById('progressFill');
 const coverOverlay = document.getElementById('coverOverlay'), coverCardImg = document.getElementById('coverCardImg');
 
-let library = [], currentSeries = null, currentZip = null;
-let chaptersMeta = [], observer = null, currentChapterIndex = 0;
+let library=[], currentSeries=null, currentZip=null, chaptersMeta=[], observer=null, currentChapterIndex=0;
 
-/* small utils */
 function showStatus(t){ statusMsg.textContent = t; }
 function uid(){ return 's_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
 function dataURLFromFile(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }); }
-function downloadBlob(b,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=name; document.body.appendChild(a); a.click(); a.remove(); }
+function downloadBlob(b,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1500); }
 
-/* robust zip helpers (kept from working engine) */
-function tryGetFile(zip, path){
-  if(!path) return null;
-  if(zip.file(path)) return zip.file(path);
-  try{ const d = decodeURIComponent(path); if(zip.file(d)) return zip.file(d);}catch(e){}
-  const p = path.replace(/^\.\//,'').replace(/^\/+/,'');
-  if(zip.file(p)) return zip.file(p);
-  const name = p.split('/').pop();
-  const keys = Object.keys(zip.files);
-  const found = keys.find(k=>k.endsWith('/'+name) || k.endsWith(name));
-  return found ? zip.file(found) : null;
-}
-function xmlParse(str){ try{ return (new DOMParser()).parseFromString(str,'application/xml'); } catch(e){ return null; } }
-async function findOpfPath(zip){
-  const c = tryGetFile(zip,'META-INF/container.xml') || tryGetFile(zip,'container.xml');
-  if(!c) return null;
-  const txt = await c.async('string');
-  const doc = xmlParse(txt);
-  if(!doc) return null;
-  const rf = doc.getElementsByTagName('rootfile')[0];
-  if(rf && rf.getAttribute) return rf.getAttribute('full-path');
-  const all = doc.getElementsByTagName('*');
-  for(const n of all) if(n.localName === 'rootfile' && n.getAttribute) { const p=n.getAttribute('full-path'); if(p) return p; }
-  return null;
-}
-async function readSpineFromZip(zip){
-  const opfPath = await findOpfPath(zip);
-  if(!opfPath) throw new Error('OPF not found');
-  const opfFile = tryGetFile(zip, opfPath);
-  if(!opfFile) throw new Error('OPF file missing: ' + opfPath);
-  const opfStr = await opfFile.async('string');
-  const opfDoc = xmlParse(opfStr);
-  if(!opfDoc) throw new Error('OPF parse failed');
-  const basePath = opfPath.split('/').slice(0,-1).join('/');
-  const manifestMap = {};
-  const manEls = opfDoc.getElementsByTagName('manifest');
-  const items = manEls.length ? manEls[0].getElementsByTagName('item') : opfDoc.getElementsByTagName('item');
-  for(const it of items){
-    const id = it.getAttribute('id') || it.getAttribute('xml:id') || '';
-    manifestMap[id] = { href: it.getAttribute('href'), mediaType: it.getAttribute('media-type'), properties: it.getAttribute('properties') };
-  }
-  const spineEls = opfDoc.getElementsByTagName('spine');
-  const itemrefs = spineEls.length ? spineEls[0].getElementsByTagName('itemref') : opfDoc.getElementsByTagName('itemref');
-  const spineList = [];
-  for(const ir of itemrefs){
-    const idref = ir.getAttribute('idref') || ir.getAttribute('id') || ir.getAttribute('href') || '';
-    spineList.push(idref);
-  }
-  if(spineList.length === 0){
-    for(const key in manifestMap){
-      const m = manifestMap[key];
-      if(m.mediaType && (m.mediaType.includes('html') || m.mediaType.includes('xhtml') || m.mediaType.includes('xml'))) spineList.push(key);
-    }
-  }
-  return { basePath, manifestMap, spineList, opfDoc };
-}
-function buildChaptersFromManifest(basePath, manifestMap, spineList){
-  const chapters = [];
-  for(const idref of spineList){
-    let item = manifestMap[idref];
-    if(!item){
-      for(const k in manifestMap) if(k === idref || manifestMap[k].href === idref) item = manifestMap[k];
-    }
-    if(!item) continue;
-    const href = (basePath ? basePath + '/' : '') + item.href;
-    chapters.push({ href, idref, title: item.href });
-  }
-  if(chapters.length === 0){
-    for(const k in manifestMap){
-      const it = manifestMap[k];
-      if(it.mediaType && (it.mediaType.includes('html')||it.mediaType.includes('xhtml')||it.mediaType.includes('xml'))) chapters.push({ href: (basePath? basePath + '/':'') + it.href, idref:k, title: it.href});
-    }
-  }
-  return chapters;
-}
-async function loadChapterHtml(zip, basePath, href){
-  const file = tryGetFile(zip, href) || tryGetFile(zip, decodeURIComponent(href));
-  if(!file) throw new Error('Chapter file missing: ' + href);
-  const raw = await file.async('string');
-  let doc;
-  try{ doc = (new DOMParser()).parseFromString(raw,'application/xml'); }
-  catch(e){ doc = (new DOMParser()).parseFromString(raw,'text/html'); }
-  if(!doc) throw new Error('Failed parsing chapter: ' + href);
+/* ZIP helpers (stable) */
+function tryGetFile(zip, path){ if(!path) return null; if(zip.file(path)) return zip.file(path); try{ const d=decodeURIComponent(path); if(zip.file(d)) return zip.file(d);}catch(e){} const p=path.replace(/^\./,'').replace(/^\//,''); if(zip.file(p)) return zip.file(p); const name=p.split('/').pop(); const keys=Object.keys(zip.files); const found=keys.find(k=>k.endsWith('/'+name) || k.endsWith(name)); return found? zip.file(found): null; }
+function xmlParse(str){ try{ return (new DOMParser()).parseFromString(str,'application/xml'); }catch(e){ return null; } }
+async function findOpfPath(zip){ const c= tryGetFile(zip,'META-INF/container.xml') || tryGetFile(zip,'container.xml'); if(!c) return null; const txt = await c.async('string'); const doc = xmlParse(txt); if(!doc) return null; const rf = doc.getElementsByTagName('rootfile')[0]; if(rf && rf.getAttribute) return rf.getAttribute('full-path'); const all=doc.getElementsByTagName('*'); for(const n of all) if(n.localName === 'rootfile' && n.getAttribute){ const p=n.getAttribute('full-path'); if(p) return p; } return null; }
+async function readSpineFromZip(zip){ const opfPath = await findOpfPath(zip); if(!opfPath) throw new Error('OPF not found'); const opfFile = tryGetFile(zip, opfPath); if(!opfFile) throw new Error('OPF file missing: ' + opfPath); const opfStr = await opfFile.async('string'); const opfDoc = xmlParse(opfStr); if(!opfDoc) throw new Error('OPF parse failed'); const basePath = opfPath.split('/').slice(0,-1).join('/'); const manifestMap = {}; const manEls = opfDoc.getElementsByTagName('manifest'); const items = manEls.length ? manEls[0].getElementsByTagName('item') : opfDoc.getElementsByTagName('item'); for(const it of items){ const id = it.getAttribute('id') || it.getAttribute('xml:id') || ''; manifestMap[id] = { href: it.getAttribute('href'), mediaType: it.getAttribute('media-type'), properties: it.getAttribute('properties') }; } const spineEls = opfDoc.getElementsByTagName('spine'); const itemrefs = spineEls.length ? spineEls[0].getElementsByTagName('itemref') : opfDoc.getElementsByTagName('itemref'); const spineList = []; for(const ir of itemrefs){ const idref = ir.getAttribute('idref') || ir.getAttribute('id') || ir.getAttribute('href') || ''; spineList.push(idref); } if(spineList.length === 0){ for(const key in manifestMap){ const m = manifestMap[key]; if(m.mediaType && (m.mediaType.includes('html') || m.mediaType.includes('xhtml') || m.mediaType.includes('xml'))) spineList.push(key); } } return { basePath, manifestMap, spineList, opfDoc }; }
+function buildChaptersFromManifest(basePath, manifestMap, spineList){ const chapters = []; for(const idref of spineList){ let item = manifestMap[idref]; if(!item){ for(const k in manifestMap) if(k === idref || manifestMap[k].href === idref) item = manifestMap[k]; } if(!item) continue; const href = (basePath ? basePath + '/' : '') + item.href; chapters.push({ href, idref, title: item.href }); } if(chapters.length === 0){ for(const k in manifestMap){ const it = manifestMap[k]; if(it.mediaType && (it.mediaType.includes('html')||it.mediaType.includes('xhtml')||it.mediaType.includes('xml'))) chapters.push({ href: (basePath? basePath + '/':'') + it.href, idref:k, title: it.href}); } } return chapters; }
+async function loadChapterHtml(zip, basePath, href){ const file = tryGetFile(zip, href) || tryGetFile(zip, decodeURIComponent(href)); if(!file) throw new Error('Chapter file missing: ' + href); const raw = await file.async('string'); let doc; try{ doc = (new DOMParser()).parseFromString(raw,'application/xml'); }catch(e){ doc = (new DOMParser()).parseFromString(raw,'text/html'); } if(!doc) throw new Error('Failed parsing chapter: ' + href);
+  // inline CSS
   const linkEls = Array.from(doc.getElementsByTagName('link'));
-  for(const link of linkEls){
-    const rel = (link.getAttribute('rel')||'').toLowerCase();
-    if(rel === 'stylesheet'){
-      const cssHref = link.getAttribute('href');
-      const candidates = [ (basePath? basePath + '/':'') + cssHref, cssHref, decodeURIComponent(cssHref) ];
-      let cssFile = null;
-      for(const c of candidates){ cssFile = tryGetFile(zip, c); if(cssFile) break; }
-      if(cssFile){
-        try{
-          const css = await cssFile.async('string');
-          const style = doc.createElement('style'); style.textContent = css;
-          link.parentNode.replaceChild(style, link);
-        }catch(e){ link.remove(); }
-      } else link.remove();
-    }
-  }
+  for(const link of linkEls){ const rel=(link.getAttribute('rel')||'').toLowerCase(); if(rel==='stylesheet'){ const cssHref=link.getAttribute('href')||''; const candidates = [(basePath? basePath + '/':'')+cssHref, cssHref, decodeURIComponent(cssHref)]; let cssFile=null; for(const c of candidates){ cssFile = tryGetFile(zip,c); if(cssFile) break; } if(cssFile){ try{ const css = await cssFile.async('string'); const style = doc.createElement('style'); style.textContent = css; link.parentNode.replaceChild(style, link); }catch(e){ link.remove(); } } else link.remove(); } }
+  // inline images
   const imgs = Array.from(doc.getElementsByTagName('img'));
-  for(const img of imgs){
-    const src = img.getAttribute('src') || '';
-    if(!src) continue;
-    const candidates = [ (basePath? basePath + '/':'') + src, src, decodeURIComponent(src) ];
-    let imgFile = null;
-    for(const c of candidates){ imgFile = tryGetFile(zip,c); if(imgFile) break; }
-    if(imgFile){
-      try{
-        const blob = await imgFile.async('blob');
-        const url = URL.createObjectURL(blob);
-        img.setAttribute('src', url);
-      }catch(e){ console.warn('img inline failed', src, e); }
-    }
-  }
-  const serializer = new XMLSerializer();
-  const bodies = doc.getElementsByTagName('body');
-  let html = '';
-  if(bodies && bodies.length>0) html = serializer.serializeToString(bodies[0]).replace(/^<body[^>]*>/i,'').replace(/<\/body>$/i,'');
-  else html = serializer.serializeToString(doc);
-  let title = '';
-  const t = doc.getElementsByTagName('title')[0] || (doc.querySelector && doc.querySelector('h1'));
-  if(t) title = (t.textContent||'').trim();
-  return { html, title: title || href.split('/').pop() };
-}
+  for(const img of imgs){ const src = img.getAttribute('src') || ''; if(!src) continue; const candidates=[(basePath? basePath + '/':'')+src, src, decodeURIComponent(src)]; let imgFile=null; for(const c of candidates){ imgFile = tryGetFile(zip,c); if(imgFile) break; } if(imgFile){ try{ const blob = await imgFile.async('blob'); const url = URL.createObjectURL(blob); img.setAttribute('src', url); img.setAttribute('loading','lazy'); img.style.maxWidth='100%'; img.style.height='auto'; }catch(e){ console.warn('img inline fail', src, e); } } }
+  const serializer = new XMLSerializer(); const bodies = doc.getElementsByTagName('body'); let html = ''; if(bodies && bodies.length>0) html = serializer.serializeToString(bodies[0]).replace(/^<body[^>]*>/i,'').replace(/<\/body>$/i,''); else html = serializer.serializeToString(doc); let title = ''; const t = doc.getElementsByTagName('title')[0] || (doc.querySelector && doc.querySelector('h1')); if(t) title = (t.textContent||'').trim(); return { html, title: title || href.split('/').pop() }; }
 
-/* render library */
-async function renderLibrary(){
-  tilesEl.innerHTML='';
-  showStatus('Loading library...');
-  const list = await getAll().catch(e=>{ console.error(e); return []; });
-  library = list.sort((a,b)=> (a.title||'').localeCompare(b.title||''));
-  for(const s of library){
-    const tile = document.createElement('div'); tile.className='tile';
-    if(s.cover){ const img = document.createElement('img'); img.src=s.cover; tile.appendChild(img); }
-    else { const img = document.createElement('img'); img.src = 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='800' height='1200'><rect width='100%' height='100%' fill='#111'/><text x='50%' y='54%' font-size='28' fill='#efe7c9' text-anchor='middle' font-family='Playfair Display'>${(s.title||'Untitled')}</text></svg>`); tile.appendChild(img); }
-    const meta = document.createElement('div'); meta.className='meta';
-    const t = document.createElement('span'); t.className='title'; t.textContent = s.title || 'Untitled';
-    const r = document.createElement('span'); r.className='resume'; r.textContent = (s.lastIndex >= 0) ? 'Resume' : '';
-    meta.appendChild(t); meta.appendChild(r); tile.appendChild(meta);
-
-    tile.addEventListener('contextmenu', ev=>{ ev.preventDefault(); if(confirm(`Delete "${s.title}"?`)){ deleteById(s.id).then(()=>renderLibrary()); }});
-    tile.addEventListener('click', ()=> openSeriesWithCover(s.id));
-    tilesEl.appendChild(tile);
+/* render library grid */
+async function renderLibraryGrid(query){ libraryGrid.innerHTML = ''; showStatus('Loading...'); const list = await getAll().catch(e=>{console.error(e);return[]}); library = list.sort((a,b)=>(a.title||'').localeCompare(b.title||'')); const q = (query||'').toLowerCase().trim(); const filtered = q ? library.filter(s => (s.title||'').toLowerCase().includes(q)) : library; if(filtered.length===0){ libraryGrid.innerHTML = '<div style="color:var(--muted);padding:22px">Library empty — import an EPUB</div>'; showStatus('Ready'); return; } for(const s of filtered){ const card = document.createElement('div'); card.className='card'; const cover = document.createElement('div'); cover.className='cardCover'; const img = document.createElement('img'); img.src = s.cover || 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1200"><rect width="100%" height="100%" fill="#0b0b0d"/><text x="50%" y="54%" font-size="28" fill="#efe7c9" text-anchor="middle" font-family="Playfair Display">${escapeHtml(s.title||'Untitled')}</text></svg>`); img.alt = s.title||'cover'; img.loading='lazy'; cover.appendChild(img); card.appendChild(cover); const title = document.createElement('div'); title.className='cardTitle'; title.textContent = s.title||'Untitled'; card.appendChild(title); const meta = document.createElement('div'); meta.className='cardMeta'; meta.innerHTML = `<div>${s.lastIndex>=0? 'Resume':'New'}</div><div style='color:var(--muted)'>${(s.epub && s.epub.size)?(Math.round((s.epub.size||0)/1024)+'KB'):'—'}</div>`; card.appendChild(meta);
+    // actions
+    card.addEventListener('click', ()=> openSeriesWithCover(s.id));
+    card.addEventListener('contextmenu', e=>{ e.preventDefault(); if(confirm(`Delete "${s.title}"? This removes stored EPUB and progress.`)){ deleteById(s.id).then(()=>renderLibraryGrid(globalSearch.value)); } });
+    libraryGrid.appendChild(card);
   }
-  showStatus('Ready');
+  showStatus('Ready'); }
+
+/* small library tiles (sidebar) for quick access */
+async function renderSidebarTiles(){ tilesEl.innerHTML=''; const list = await getAll().catch(e=>{return[]}); const sorted = list.sort((a,b)=>(a.title||'').localeCompare(b.title||'')); for(const s of sorted){ const tile=document.createElement('div'); tile.className='tile'; const img=document.createElement('img'); img.src = s.cover || 'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1200"><rect width="100%" height="100%" fill="#0b0b0d"/><text x="50%" y="54%" font-size="28" fill="#efe7c9" text-anchor="middle" font-family="Playfair Display">${escapeHtml(s.title||'Untitled')}</text></svg>`); img.loading='lazy'; tile.appendChild(img); const meta = document.createElement('div'); meta.className='meta'; const t = document.createElement('span'); t.className='title'; t.textContent = s.title||'Untitled'; const r = document.createElement('span'); r.className='resume'; r.textContent = (s.lastIndex>=0)?'Resume':''; meta.appendChild(t); meta.appendChild(r); tile.appendChild(meta); tile.addEventListener('click', ()=> openSeriesWithCover(s.id)); tile.addEventListener('contextmenu', ev=>{ ev.preventDefault(); if(confirm(`Delete "${s.title}"?`)){ deleteById(s.id).then(()=>{ renderSidebarTiles(); renderLibraryGrid(); }); } }); tilesEl.appendChild(tile); }
 }
 
 /* add series */
-document.getElementById('addSeriesBtn').addEventListener('click', async ()=>{
-  const epubFile = epubInput.files[0];
-  if(!epubFile){ alert('Choose an EPUB'); return; }
-  showStatus('Caching EPUB...');
-  try{
-    const blob = epubFile.slice(0, epubFile.size, epubFile.type || 'application/epub+zip');
-    const cover = coverInput.files[0] ? await dataURLFromFile(coverInput.files[0]) : null;
-    const id = uid(), title = (epubFile.name||id).replace(/\.epub$/i,'');
-    await putObj({ id, title, epub: blob, cover, lastIndex: 0 });
-    epubInput.value=''; coverInput.value='';
-    await renderLibrary();
-    showStatus('Ready');
-  }catch(e){ console.error(e); alert('Add failed'); showStatus('Ready'); }
-});
+document.getElementById('addSeriesBtn').addEventListener('click', async ()=>{ const epubFile = epubInput.files[0]; if(!epubFile){ alert('Choose an EPUB'); return; } showStatus('Caching EPUB...'); try{ const cover = coverInput.files[0] ? await dataURLFromFile(coverInput.files[0]) : null; const id=uid(), title=(epubFile.name||id).replace(/\.epub$/i,''); const blob = epubFile.slice(0, epubFile.size, epubFile.type || 'application/epub+zip'); await putObj({id,title,epub:blob,cover,lastIndex:0}); epubInput.value=''; coverInput.value=''; await renderSidebarTiles(); await renderLibraryGrid(); showStatus('Ready'); }catch(e){ console.error(e); alert('Add failed'); showStatus('Ready'); } });
 
 /* cover reveal then open */
-async function openSeriesWithCover(id){
-  const s = await getById(id);
-  if(!s) return alert('Series missing');
-  currentSeries = s;
-  coverCardImg.src = s.cover || ('data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='1800'><rect width='100%' height='100%' fill='#0b0b0d'/><text x='50%' y='52%' font-size='48' fill='#efe7c9' text-anchor='middle' font-family='Playfair Display'>${s.title||'Untitled'}</text></svg>`));
-  coverOverlay.classList.add('show');
-  setTimeout(()=>{ coverOverlay.classList.remove('show'); openSeries(id); }, 750);
-}
+async function openSeriesWithCover(id){ const s = await getById(id); if(!s) return alert('Series missing'); currentSeries = s; coverCardImg.src = s.cover || ('data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='1800'><rect width='100%' height='100%' fill='#0b0b0d'/><text x='50%' y='52%' font-size='48' fill='#efe7c9' text-anchor='middle' font-family='Playfair Display'>${escapeHtml(s.title||'Untitled')}</text></svg>`)); coverOverlay.style.pointerEvents='auto'; coverOverlay.style.opacity='1'; setTimeout(()=>{ coverOverlay.style.opacity='0'; coverOverlay.style.pointerEvents='none'; openSeries(id); }, 560); }
 
-/* open series (lazy) */
-async function openSeries(id){
-  showStatus('Preparing book...');
-  try{
-    const s = await getById(id);
-    if(!s) throw new Error('Series missing');
-    currentSeries = s;
-    seriesTitle.textContent = s.title || 'Series';
-    homepageView.style.display='none';
-    readerWrap.style.display='block';
-    // set reading mode - hides sidebar visually
-    document.body.classList.add('reading');
-    viewer.innerHTML = '<div style="padding:22px;color:var(--muted)">Preparing book…</div>';
-    currentZip = await JSZip.loadAsync(await (s.epub instanceof Blob ? s.epub.arrayBuffer() : s.epub));
-    const spineData = await readSpineFromZip(currentZip);
-    const base = spineData.basePath, manifest = spineData.manifestMap, spineList = spineData.spineList;
-    chaptersMeta = buildChaptersFromManifest(base, manifest, spineList);
-    if(chaptersMeta.length === 0){ viewer.innerHTML = '<div style="padding:22px;color:var(--muted)">No readable chapters found.</div>'; showStatus('Ready'); return; }
-    // build placeholders
-    viewer.innerHTML = '';
-    const frag = document.createDocumentFragment();
-    chaptersMeta.forEach((meta, idx)=>{
-      const ph = document.createElement('div'); ph.className='chapter-placeholder'; ph.dataset.idx = idx;
-      ph.textContent = meta.title || ('Chapter ' + (idx+1));
-      frag.appendChild(ph);
-    });
-    viewer.appendChild(frag);
-    // intersection to lazy load
-    if(observer) observer.disconnect();
-    observer = new IntersectionObserver(async (entries)=>{
-      for(const e of entries){
-        if(e.isIntersecting){
-          const idx = Number(e.target.dataset.idx);
-          if(!e.target.classList.contains('chapter-loaded')) await loadChapterAt(idx);
-        }
-      }
-    }, { root: viewer, rootMargin: '700px', threshold: 0.01 });
-    Array.from(viewer.querySelectorAll('.chapter-placeholder')).forEach(el=>observer.observe(el));
-    // load first quickly
-    loadChapterAt(0);
-    // restore lastIndex
-    currentChapterIndex = (s.lastIndex >=0 && s.lastIndex < chaptersMeta.length) ? s.lastIndex : 0;
-    setTimeout(()=> scrollToChapter(currentChapterIndex, false), 260);
-    viewer.addEventListener('scroll', throttle(updateCurrentByScroll, 150));
-    showStatus('Ready');
-  }catch(err){
-    console.error('openSeries error', err);
-    alert('Failed to open EPUB: ' + (err.message || err));
-    showStatus('Ready');
-  }
-}
+/* open series (keeps stable placeholder injection) */
+async function openSeries(id){ showStatus('Preparing book...'); try{ const s = await getById(id); if(!s) throw new Error('Series missing'); currentSeries = s; seriesTitle.textContent = s.title || 'Series'; readerWrap.style.display='block'; document.body.classList.add('reading'); viewer.innerHTML = '<div style="padding:22px;color:var(--muted)">Preparing book…</div>'; currentZip = await JSZip.loadAsync(s.epub); const spineData = await readSpineFromZip(currentZip); const base = spineData.basePath, manifest = spineData.manifestMap, spineList = spineData.spineList; chaptersMeta = buildChaptersFromManifest(base, manifest, spineList); if(chaptersMeta.length === 0){ viewer.innerHTML = '<div style="padding:22px;color:var(--muted)">No readable chapters found.</div>'; showStatus('Ready'); return; } viewer.innerHTML=''; const frag=document.createDocumentFragment(); chaptersMeta.forEach((meta,idx)=>{ const ph=document.createElement('div'); ph.className='chapter-placeholder'; ph.dataset.idx=idx; ph.textContent=meta.title||('Chapter '+(idx+1)); ph.style.minHeight = Math.round(Math.max(180, window.innerHeight * 0.25)) + 'px'; frag.appendChild(ph); }); viewer.appendChild(frag); if(observer) observer.disconnect(); observer = new IntersectionObserver(async (entries)=>{ for(const e of entries){ if(e.isIntersecting){ const idx = Number(e.target.dataset.idx); if(!e.target.classList.contains('chapter-loaded')) await loadChapterAt(idx); } } }, { root: viewer, rootMargin: '300px', threshold: 0.12 }); Array.from(viewer.querySelectorAll('.chapter-placeholder')).forEach(el=>observer.observe(el)); currentChapterIndex = (s.lastIndex>=0 && s.lastIndex < chaptersMeta.length) ? s.lastIndex : 0; await loadChapterAt(Math.max(0, currentChapterIndex)); if(currentChapterIndex+1 < chaptersMeta.length) loadChapterAt(currentChapterIndex+1); setTimeout(()=> smoothScrollToChapter(currentChapterIndex, false), 220); viewer.addEventListener('scroll', throttle(updateCurrentByScroll, 160)); showStatus('Ready'); }catch(err){ console.error('openSeries error', err); alert('Failed to open EPUB: ' + (err.message || err)); showStatus('Ready'); } }
 
-/* load chapter: robust insertion and guaranteed readable content */
-async function loadChapterAt(idx){
-  if(!currentZip || !chaptersMeta[idx]) return;
-  const placeholder = viewer.querySelector('.chapter-placeholder[data-idx="'+idx+'"]');
-  if(!placeholder) return;
-  if(placeholder.classList.contains('chapter-loaded')) return;
-  placeholder.classList.add('chapter-loaded');
-  try{
-    const base = chaptersMeta[idx].href.split('/').slice(0,-1).join('/');
-    const res = await loadChapterHtml(currentZip, base, chaptersMeta[idx].href);
-    // create container
-    const div = document.createElement('div'); div.className = 'chapter'; div.dataset.idx = idx;
-    div.innerHTML = `<div class="chapter-title">${escapeHtml(res.title)}</div><div class="chapter-body">${res.html}</div>`;
-    // robust: ensure readable text exists
-    const body = div.querySelector('.chapter-body');
-    // if no paragraph-like nodes, create a fallback paragraph with textContent
-    const hasP = body.querySelectorAll('p,div,section,article').length > 0;
-    if(!hasP){
-      const txt = (body.textContent || '').trim();
-      body.innerHTML = ''; // wipe odd markup
-      const p = document.createElement('p'); p.textContent = txt || '(no extractable text)'; body.appendChild(p);
-    } else {
-      // normalize inline blocks into paragraphs if required — ensure paragraphs exist
-      const possible = body.querySelectorAll('p');
-      if(possible.length === 0){
-        // wrap top-level text nodes / blocks into <p>
-        const blocks = Array.from(body.children);
-        body.innerHTML = ''; // we'll re-append as paragraphs
-        blocks.forEach(b=>{
-          const p = document.createElement('p');
-          p.innerHTML = b.innerHTML || b.textContent || '';
-          body.appendChild(p);
-        });
-      }
-    }
-    // replace placeholder
-    placeholder.replaceWith(div);
-    // visible immediately (fast)
-    setTimeout(()=> div.classList.add('visible'), 60);
-    // reveal paragraphs quickly (fast, not slow)
-    const ps = div.querySelectorAll('.chapter-body p');
-    ps.forEach((p,i)=> setTimeout(()=> p.classList.add('visible'), 40 + i*30));
-  }catch(e){
-    console.error('Chapter load failed', e);
-    placeholder.textContent = 'Failed to load chapter';
-  }
-}
+/* inject into placeholder */
+async function loadChapterAt(idx){ if(!currentZip || !chaptersMeta[idx]) return; const placeholder = viewer.querySelector('.chapter-placeholder[data-idx="'+idx+'"]'); if(!placeholder) return; if(placeholder.classList.contains('chapter-loaded')) return; placeholder.classList.add('chapter-loaded'); const prevH = placeholder.getBoundingClientRect().height; placeholder.style.minHeight = prevH + 'px'; const originalText = placeholder.textContent; try{ const base = chaptersMeta[idx].href.split('/').slice(0,-1).join('/'); const res = await loadChapterHtml(currentZip, base, chaptersMeta[idx].href); placeholder.classList.remove('chapter-placeholder'); placeholder.classList.add('chapter'); placeholder.dataset.idx = idx; placeholder.innerHTML = `<div class="chapter-title">${escapeHtml(res.title)}</div><div class="chapter-body">${res.html}</div>`; const body = placeholder.querySelector('.chapter-body'); const hasParagraphs = body.querySelectorAll('p,div,section,article').length > 0; if(!hasParagraphs){ const txt = (body.textContent||'').trim(); body.innerHTML=''; const p=document.createElement('p'); p.textContent = txt || '(no extractable text)'; body.appendChild(p); } else { const pCount = body.querySelectorAll('p').length; if(pCount===0){ const blocks=Array.from(body.children); body.innerHTML=''; blocks.forEach(b=>{ const p=document.createElement('p'); p.innerHTML = b.innerHTML || b.textContent || ''; body.appendChild(p); }); } } const imgs = placeholder.querySelectorAll('img'); imgs.forEach(img=>{ if(!img.getAttribute('loading')) img.setAttribute('loading','lazy'); img.style.maxWidth='100%'; img.style.height='auto'; }); setTimeout(()=> placeholder.classList.add('visible'), 60); const ps = placeholder.querySelectorAll('.chapter-body p'); ps.forEach((p,i)=> setTimeout(()=> p.classList.add('visible'), 80 + i*18)); setTimeout(()=>{ placeholder.style.minHeight = ''; }, 900); if(observer) try{ observer.unobserve(placeholder);}catch(e){} }catch(e){ console.error('Chapter load failed', e); placeholder.innerHTML = `<div style="padding:18px;color:var(--muted)">Failed to load: ${escapeHtml(originalText || 'chapter')}</div>`; placeholder.style.minHeight = ''; } }
 
-/* scroll & progress helpers */
-async function scrollToChapter(idx, smooth=true){
-  const el = viewer.querySelector('.chapter[data-idx="'+idx+'"], .chapter-placeholder[data-idx="'+idx+'"]');
-  if(el) el.scrollIntoView({behavior: smooth ? 'smooth' : 'auto', block:'start'});
-  currentChapterIndex = idx;
-  if(currentSeries){ currentSeries.lastIndex = currentChapterIndex; await putObj(currentSeries); }
-  updateProgressBar();
-}
-function updateCurrentByScroll(){
-  const rect = viewer.getBoundingClientRect();
-  const chapters = Array.from(viewer.querySelectorAll('.chapter, .chapter-placeholder'));
-  let best = {idx:0, vis:0};
-  chapters.forEach((ch)=>{ const r = ch.getBoundingClientRect(); const vis = Math.max(0, Math.min(r.bottom, rect.bottom) - Math.max(r.top, rect.top)); if(vis > best.vis){ best = {idx: Number(ch.dataset.idx), vis}; } });
-  if(best.idx !== currentChapterIndex){
-    currentChapterIndex = best.idx;
-    if(currentSeries){ currentSeries.lastIndex = currentChapterIndex; putObj(currentSeries); }
-  }
-  updateProgressBar();
-}
-function updateProgressBar(){ const total = Math.max(1, chaptersMeta.length); const pct = Math.round(((currentChapterIndex+1) / total) * 100); progressFill.style.height = pct + '%'; }
+/* scrolling helpers */
+function smoothScrollToChapter(idx, smooth=true){ const el = viewer.querySelector('.chapter[data-idx="'+idx+'"], .chapter-placeholder[data-idx="'+idx+'"]'); if(!el) return; const viewerRect = viewer.getBoundingClientRect(); const elRect = el.getBoundingClientRect(); const targetTop = (elRect.top - viewerRect.top) + viewer.scrollTop; viewer.scrollTo({ top: Math.max(0, targetTop), behavior: smooth ? 'smooth' : 'auto' }); currentChapterIndex = idx; if(currentSeries){ currentSeries.lastIndex = currentChapterIndex; putObj(currentSeries); } updateProgressBar(); }
+function updateCurrentByScroll(){ const rect = viewer.getBoundingClientRect(); const chapters = Array.from(viewer.querySelectorAll('.chapter, .chapter-placeholder')); let best={idx:0,vis:0}; chapters.forEach((ch)=>{ const r = ch.getBoundingClientRect(); const vis = Math.max(0, Math.min(r.bottom, rect.bottom) - Math.max(r.top, rect.top)); if(vis>best.vis) best={idx:Number(ch.dataset.idx),vis}; }); if(best.idx !== currentChapterIndex){ currentChapterIndex = best.idx; if(currentSeries){ currentSeries.lastIndex=currentChapterIndex; putObj(currentSeries); } } updateProgressBar(); }
+function updateProgressBar(){ const total = Math.max(1, chaptersMeta.length); const pct = Math.round(((currentChapterIndex+1)/total)*100); progressFill.style.width = pct + '%'; }
 
 /* nav & keyboard */
-document.getElementById('nextBtn').addEventListener('click', ()=>{ if(currentChapterIndex < chaptersMeta.length -1) playFog(()=> scrollToChapter(currentChapterIndex+1)); });
-document.getElementById('prevBtn').addEventListener('click', ()=>{ if(currentChapterIndex > 0) playFog(()=> scrollToChapter(currentChapterIndex-1)); });
-function playFog(action){ fog.style.opacity = 1; setTimeout(()=>{ try{ action(); }catch(e){} setTimeout(()=> fog.style.opacity = 0, 360); }, 180); }
+document.getElementById('increaseFont').addEventListener('click', ()=>{ const v = Math.min(28, Number(fontSizeRange.value) + 1); fontSizeRange.value = v; applyReaderPrefs(); savePrefs(); });
+document.getElementById('decreaseFont').addEventListener('click', ()=>{ const v = Math.max(14, Number(fontSizeRange.value) - 1); fontSizeRange.value = v; applyReaderPrefs(); savePrefs(); });
 
-document.addEventListener('keydown', (e)=>{
-  const tag = document.activeElement && document.activeElement.tagName.toLowerCase();
-  if(tag === 'input' || tag === 'textarea') return;
-  if(readerWrap.style.display !== 'block') return;
-  if(e.code === 'ArrowRight'){ e.preventDefault(); if(currentChapterIndex < chaptersMeta.length-1) playFog(()=>scrollToChapter(currentChapterIndex+1)); }
-  else if(e.code === 'ArrowLeft'){ e.preventDefault(); if(currentChapterIndex > 0) playFog(()=>scrollToChapter(currentChapterIndex-1)); }
-  else if(e.code === 'Space' || e.code === 'ArrowDown'){ e.preventDefault(); viewer.scrollBy({ top: 360, behavior: 'smooth' }); }
-  else if(e.code === 'ShiftRight' || e.code === 'ArrowUp'){ e.preventDefault(); viewer.scrollBy({ top: -360, behavior: 'smooth' }); }
-});
+document.getElementById('nextBtn')?.addEventListener('click', ()=>{ if(currentChapterIndex < chaptersMeta.length -1) smoothScrollToChapter(currentChapterIndex+1); });
+document.getElementById('prevBtn')?.addEventListener('click', ()=>{ if(currentChapterIndex>0) smoothScrollToChapter(currentChapterIndex-1); });
+
+document.addEventListener('keydown', (e)=>{ const tag = document.activeElement && document.activeElement.tagName && document.activeElement.tagName.toLowerCase(); if(tag==='input' || tag==='textarea') return; if(readerWrap.style.display!=='block') return; if(e.code==='ArrowRight'){ e.preventDefault(); if(currentChapterIndex < chaptersMeta.length-1) smoothScrollToChapter(currentChapterIndex+1); } else if(e.code==='ArrowLeft'){ e.preventDefault(); if(currentChapterIndex>0) smoothScrollToChapter(currentChapterIndex-1); } else if(e.code==='Space' || e.code==='ArrowDown'){ e.preventDefault(); viewer.scrollBy({ top:360, behavior:'smooth' }); } else if(e.code==='ShiftRight' || e.code==='ArrowUp'){ e.preventDefault(); viewer.scrollBy({ top:-360, behavior:'smooth' }); } });
+
+/* search */
+globalSearch.addEventListener('input', throttle(()=>{ renderLibraryGrid(globalSearch.value); }, 250));
+
+/* settings */
+openSettings.addEventListener('click', ()=>{ settingsPanel.style.display = settingsPanel.style.display === 'block' ? 'none' : 'block'; });
+fontSizeRange.addEventListener('input', ()=>{ applyReaderPrefs(); savePrefs(); });
+lineHeightRange.addEventListener('input', ()=>{ applyReaderPrefs(); savePrefs(); });
+themeSelect.addEventListener('change', ()=>{ applyReaderPrefs(); savePrefs(); });
+
+/* columns */
+let columnsOn = false; toggleColumns.addEventListener('click', ()=>{ columnsOn = !columnsOn; if(columnsOn) viewer.style.columnCount = 2; else viewer.style.columnCount = 1; });
 
 /* download current epub */
-downloadEpubBtn.addEventListener('click', async ()=>{
-  if(!currentSeries) return alert('Open a book first');
-  const s = await getById(currentSeries.id);
-  if(!s || !s.epub) return alert('EPUB missing');
-  const blob = s.epub instanceof Blob ? s.epub : new Blob([s.epub], {type:'application/epub+zip'});
-  downloadBlob(blob, (s.title || 'book') + '.epub');
-});
-
-/* fullscreen toggle */
-toggleFullscreenBtn.addEventListener('click', ()=>{ if(!document.fullscreenElement){ document.documentElement.requestFullscreen?.().catch(()=>{}); } else document.exitFullscreen?.(); });
-document.addEventListener('fullscreenchange', ()=>{ document.body.classList.toggle('fullscreen', !!document.fullscreenElement); });
-
-/* download all */
-downloadAllBtn.addEventListener('click', async ()=>{
-  const all = await getAll();
-  if(!all || all.length === 0) return alert('No series');
-  const z = new JSZip();
-  for(const s of all) if(s.epub) z.file((s.title||s.id)+'.epub', s.epub);
-  const blob = await z.generateAsync({type:'blob'});
-  downloadBlob(blob, 'comick_library.zip');
-});
+downloadEpub.addEventListener('click', async ()=>{ if(!currentSeries) return alert('Open a book first'); const s=await getById(currentSeries.id); if(!s||!s.epub) return alert('EPUB missing'); const blob = s.epub instanceof Blob ? s.epub : new Blob([s.epub], {type:'application/epub+zip'}); downloadBlob(blob, (s.title||'book')+'.epub'); });
 
 /* goto library */
-gotoHome.addEventListener('click', ()=>{ readerWrap.style.display='none'; homepageView.style.display='block'; viewer.innerHTML=''; chaptersMeta=[]; if(observer) observer.disconnect(); currentZip=null; currentSeries=null; document.body.classList.remove('reading'); renderLibrary(); });
+gotoHome.addEventListener('click', ()=>{ readerWrap.style.display='none'; viewer.innerHTML=''; chaptersMeta=[]; if(observer) observer.disconnect(); currentZip=null; currentSeries=null; document.body.classList.remove('reading'); renderSidebarTiles(); renderLibraryGrid(); });
 
-/* cursor glow */
-document.addEventListener('mousemove', e => { cursorGlow.style.left = e.clientX + 'px'; cursorGlow.style.top = e.clientY + 'px'; });
+/* preferences persistence */
+function loadPrefs(){ try{ const p = JSON.parse(localStorage.getItem('comick_prefs')||'{}'); if(p.fontSize) fontSizeRange.value = p.fontSize; if(p.lineHeight) lineHeightRange.value = p.lineHeight; if(p.theme) themeSelect.value = p.theme; }catch(e){} applyReaderPrefs(); }
+function savePrefs(){ const p = { fontSize: Number(fontSizeRange.value), lineHeight: Number(lineHeightRange.value), theme: themeSelect.value }; localStorage.setItem('comick_prefs', JSON.stringify(p)); }
+function applyReaderPrefs(){ const fs = Number(fontSizeRange.value); const lh = Number(lineHeightRange.value)/100; viewer.style.fontSize = fs + 'px'; viewer.style.lineHeight = lh; if(themeSelect.value === 'light'){ document.documentElement.style.setProperty('--bg','#f5f5f6'); document.documentElement.style.setProperty('--panel','#ffffff'); document.documentElement.style.setProperty('--accent','#0b0b0b'); } else { document.documentElement.style.setProperty('--bg','#061017'); document.documentElement.style.setProperty('--panel','#0f1116'); document.documentElement.style.setProperty('--accent','#efe7c9'); } }
 
-/* small helpers */
-function escapeHtml(s){ return (''+s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-function throttle(fn, wait){ let t=null; return (...a)=>{ if(t) return; t=setTimeout(()=>{ t=null; fn(...a); }, wait); }; }
+/* utilities */
+function escapeHtml(s){ return (''+s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[m])); }
+function throttle(fn,wait){ let t=null; return (...a)=>{ if(t) return; t=setTimeout(()=>{ t=null; fn(...a); }, wait); }; }
 
 /* init */
-(async function init(){
-  try{ await openDB(); await renderLibrary(); showStatus('Ready'); }catch(e){ console.error('Init error', e); showStatus('Error'); }
-})();
+(async function init(){ try{ await openDB(); loadPrefs(); await renderSidebarTiles(); await renderLibraryGrid(); showStatus('Ready'); }catch(e){ console.error('Init',e); showStatus('Error'); } })();
 </script>
 </body>
 </html>
